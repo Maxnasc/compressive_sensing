@@ -1,0 +1,23 @@
+[project]
+name = "compressive_sensing"
+version = "0.0.1"
+description = "Compressive sensing algorithm for fault identification on power trasnmission networks"
+authors = [
+    {name = "Maxnasc7"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "matplotlib (>=3.10.3,<4.0.0)",
+    "numpy (>=2.3.2,<3.0.0)",
+    "scipy (>=1.16.1,<2.0.0)",
+    "cvxpy (>=1.7.1,<2.0.0)",
+    "pandas (>=2.3.1,<3.0.0)",
+    "scikit-learn (>=1.7.1,<2.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
