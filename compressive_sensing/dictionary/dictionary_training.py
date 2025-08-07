@@ -12,8 +12,10 @@ def get_windows(path: str, window_size=50000):
     # Normalização dos dados
     signal = (signal - np.mean(signal))/ np.std(signal)
     
+    signal_train = [signal[n] for n in range(int(0.8*len(signal)))]
+    
     # Dividir em janelas
-    windows = [signal[i:i+window_size] for i in range(0, len(signal)-window_size, window_size)]
+    windows = [signal_train[i:i+window_size] for i in range(0, len(signal_train)-window_size, window_size)]
     return windows
 
 def get_x_data():
@@ -35,7 +37,7 @@ def train_dictionary(X, n_components=100):
     D = dict_learner.fit(X).components_
     
     # Salvar o dicionário D
-    dump(D, 'compressive_sensing/dictionary/trained_dictionary.npy')
+    dump(D, 'compressive_sensing/dictionary/trained_dictionary.pkl')
     print('Dicionário salvo!')
     
 
