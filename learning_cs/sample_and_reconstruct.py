@@ -14,7 +14,7 @@ import scipy.io as sio
 from scipy.interpolate import interp1d
 
 # ----------------------------
-# CONFIG (ajuste estes parâmetros)
+# CONFIG
 # ----------------------------
 DATA_DIR = "learning_cs/"  # onde procurar sinal e salvar resultados
 SAMPLE_M = 600  # número de amostras M se não houver Phi/mask
@@ -431,6 +431,7 @@ def pipeline_full():
     plt.title("Sinal Original e locais de medição")
     plt.legend()
     plt.grid()
+    plt.savefig('learning_cs/figura 1.png')
 
     plt.subplot(2, 1, 2)
     plt.plot(sinal, label="Original", linewidth=0.8)
@@ -451,6 +452,7 @@ def pipeline_full():
     plt.title("Comparação: Original vs Reconstruída vs Refinada")
     plt.legend()
     plt.grid()
+    plt.savefig('learning_cs/figura 2.png')
     
     plt.figure(figsize=(14, 6))
     plt.plot(sinal, label="Original", linewidth=0.8)
@@ -458,6 +460,7 @@ def pipeline_full():
     plt.title("Reconstruída")
     plt.legend()
     plt.grid()
+    plt.savefig('learning_cs/figura 3.png')
     
     plt.figure(figsize=(14, 6))
     plt.plot(sinal, label="Original", linewidth=0.8)
@@ -470,6 +473,7 @@ def pipeline_full():
     plt.title("Refinada")
     plt.legend()
     plt.grid()
+    plt.savefig('learning_cs/figura 4.png')
 
     # add interactive cursor on the second subplot
     try:
