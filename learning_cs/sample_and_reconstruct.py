@@ -42,7 +42,7 @@ np.random.seed(RANDOM_SEED)
 
 def load_dot_mat_signal():
     mat_contents = sio.loadmat(
-        "/mnt/HD/HD/Documents/Mestrado/Dissertacao/compressive_sensing/learning_cs/FaltamonofasicaAT45km20ohm200khz.mat"
+        "data/ATPdraw/1MHz_samples.mat"
     )
     print(mat_contents.keys())
 
