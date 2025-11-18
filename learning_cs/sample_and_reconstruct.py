@@ -4,6 +4,7 @@
 # Execute no Jupyter (VSCode): antes rode %matplotlib widget para interatividade
 
 import os
+from pathlib import Path
 import numpy as np
 import pywt
 import matplotlib.pyplot as plt
@@ -12,6 +13,7 @@ import json
 import mplcursors
 import scipy.io as sio
 from scipy.interpolate import interp1d
+import pandas as pd
 
 # ----------------------------
 # CONFIG (ajuste estes parâmetros)
@@ -42,7 +44,7 @@ np.random.seed(RANDOM_SEED)
 
 def load_dot_mat_signal():
     mat_contents = sio.loadmat(
-        "/mnt/HD/HD/Documents/Mestrado/Dissertacao/compressive_sensing/learning_cs/FaltamonofasicaAT45km20ohm200khz.mat"
+        "data\ATPdraw\1MHz_samples.mat"
     )
     print(mat_contents.keys())
 
@@ -53,6 +55,20 @@ def load_dot_mat_signal():
     return s1[:,0]
     print(len(tempo))
 
+def load_csv_signal(frequency: str):
+    # Lê CSV
+    df = pd.read_csv(f"data/ATPdraw/{frequency}_samples.csv")
+
+    # Mostra as colunas disponíveis
+    print(df.columns)
+
+    # Extrai os sinais
+    tempo = df["t"].values
+    s1 = df["vLoca"].values
+    s2 = df["vLocb"].values
+    s3 = df["vLocc"].values
+
+    return s1  # equivalente ao seu return s1[:,0]
 
 def try_load_signal(data_dir=DATA_DIR):
     candidates = ["x_original.npy", "x.npy", "signal.npy", "sinal.npy"]
@@ -237,9 +253,10 @@ def intepolate(signal):
 # ----------------------------
 # MAIN: integra tudo
 # ----------------------------
-def pipeline_full():
+def pipeline_full(frequency: str):
     # load signal
-    sinal = load_dot_mat_signal()
+    # sinal = load_dot_mat_signal()
+    sinal = load_csv_signal(frequency=frequency)
     N = sinal.size
     print(f"[info] sinal carregado, N = {N}")
 
@@ -451,6 +468,7 @@ def pipeline_full():
     plt.title("Comparação: Original vs Reconstruída vs Refinada")
     plt.legend()
     plt.grid()
+    plt.savefig(Path('learning_cs') / 'plots' / frequency / 'original_signal_vs_samples.png')
     
     plt.figure(figsize=(14, 6))
     plt.plot(sinal, label="Original", linewidth=0.8)
@@ -458,6 +476,7 @@ def pipeline_full():
     plt.title("Reconstruída")
     plt.legend()
     plt.grid()
+    plt.savefig(Path('learning_cs') / 'plots' / frequency / 'reconstruct_without_interpolation.png')
     
     plt.figure(figsize=(14, 6))
     plt.plot(sinal, label="Original", linewidth=0.8)
@@ -470,6 +489,7 @@ def pipeline_full():
     plt.title("Refinada")
     plt.legend()
     plt.grid()
+    plt.savefig(Path('learning_cs') / 'plots' / frequency / 'reconstruct_with_interpolation.png')
 
     # add interactive cursor on the second subplot
     try:
@@ -498,5 +518,6 @@ def pipeline_full():
 
 # Execução
 if __name__ == "__main__":
-    out = pipeline_full()
+    frequency = "10MHz"  # Defina a frequência desejada aqui
+    out = pipeline_full(frequency=frequency)
     print("Pipeline finalizado.")
