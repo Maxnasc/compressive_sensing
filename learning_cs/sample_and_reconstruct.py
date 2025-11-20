@@ -306,7 +306,8 @@ def pipeline_full(frequency: str):
 
     # build A and normalize
     A, A_norm, col_norms = build_A_and_normalize(Phi, Psi_concat)
-    y = Phi.dot(sinal) # <- Sinal amostrado aqui
+    # y = Phi.dot(sinal) # <- Sinal amostrado aqui
+    y = sinal # <- Considerando o sinal original como sendo o amostrado
     print(
         f"[info] A shape = {A.shape}, A_norm shape = {A_norm.shape}, y shape = {y.shape}"
     )
@@ -518,6 +519,6 @@ def pipeline_full(frequency: str):
 
 # Execução
 if __name__ == "__main__":
-    frequency = "10MHz"  # Defina a frequência desejada aqui
+    frequency = "1MHz"  # Defina a frequência desejada aqui
     out = pipeline_full(frequency=frequency)
     print("Pipeline finalizado.")
