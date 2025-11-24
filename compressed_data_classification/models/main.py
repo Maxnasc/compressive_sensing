@@ -10,6 +10,7 @@ from sklearn.preprocessing import LabelEncoder
 # from randon_forest.random_forest_training import random_forest_training
 # from xg_boost.xgboost_training import xgboost_training
 from mlp_training import mlp_training
+from svm_with_rbf_training import svc_rbf_training
 # from adaboost.adaboost_training import adaboost_training
 # from catboost.catboost_training import catboost_training
 
@@ -47,8 +48,8 @@ print()
 print("MLP")
 mlp_info = mlp_training(X_train, y_train, X_test, y_test, X)
 print()
-# print("CATBOOST")
-# cat_info = catboost_training(X_train, y_train, X_test, y_test, X)
+print("SVM_RBF")
+svm_rbf = svc_rbf_training(X_train, y_train, X_test, y_test, X)
 # print()
 # print("ADABOOST")
 # ada_info = adaboost_training(X_train, y_train, X_test, y_test, X)
@@ -56,7 +57,7 @@ print()
 # Montando tabela de comparação entre os modelos
 # df = pd.DataFrame([rr_info, rf_info, xgb_info, mlp_info])
 # df = pd.DataFrame([rr_info, rf_info, mlp_info, ada_info])
-df = pd.DataFrame([mlp_info])
+df = pd.DataFrame([mlp_info, svm_rbf])
 # df = df.drop('melhores_parametros')
 
 print(df)

@@ -90,7 +90,7 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X):
     
     # Métricas de Classificação
     accuracy = accuracy_score(y_test, y_pred)
-    report = classification_report(y_test, y_pred, zero_division=0)
+    # report = classification_report(y_test, y_pred, zero_division=0)
 
     print(f"\nDesempenho no conjunto de teste:")
     print(f"Acurácia (Accuracy): {accuracy:.4f}")

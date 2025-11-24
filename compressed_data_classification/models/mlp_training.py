@@ -72,7 +72,7 @@ def mlp_training(X_train, y_train, X_test, y_test, X):
     print(f"\nDesempenho no conjunto de teste:")
     # print(f"MSE: {mse:.4f}")
     print(f"ACURACIA: {accuracy:.4f}")
-    print(f"CLASSIF_REPORT: {report:.4f}")
+    # print(f"CLASSIF_REPORT: {report:.4f}")
 
     doc = {
         "melhores_parametros": grid_search.best_params_,
