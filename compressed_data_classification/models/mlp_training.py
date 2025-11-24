@@ -79,7 +79,7 @@ def mlp_training(X_train, y_train, X_test, y_test, X):
         "acuracia": round(accuracy, 4),
         "relatorio_classificacao": report, # Pode ser útil salvar o relatório completo
         "n_combinations": total_combinations,
-        "mean_emission": round((emissions / total_combinations), 4) if total_combinations > 0 else 0,
+        "mean_emission": round((emissions / total_combinations), 4) if total_combinations > 0 and total_combinations != None else 0,
     }
 
     with open("sensor_potencial_hidrico_ai/model/mlp/mlp_results_optical.json", "w") as f:

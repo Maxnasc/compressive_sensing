@@ -90,7 +90,7 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X):
     
     # Métricas de Classificação
     accuracy = accuracy_score(y_test, y_pred)
-    # report = classification_report(y_test, y_pred, zero_division=0)
+    report = classification_report(y_test, y_pred, zero_division=0)
 
     print(f"\nDesempenho no conjunto de teste:")
     print(f"Acurácia (Accuracy): {accuracy:.4f}")
@@ -103,7 +103,7 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X):
         "acuracia": round(accuracy, 4),
         "relatorio_classificacao": report, # Pode ser útil salvar o relatório completo
         "n_combinations": total_combinations,
-        "mean_emission": round((emissions / total_combinations), 4) if total_combinations > 0 else 0,
+        "mean_emission": round((emissions / total_combinations), 4) if total_combinations > 0 and total_combinations != None else 0,
     }
 
     # Garantir que o diretório de plots exista
