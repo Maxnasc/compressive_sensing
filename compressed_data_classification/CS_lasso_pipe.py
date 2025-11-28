@@ -24,7 +24,7 @@ SAMPLE_M = 40  # número de amostras M se não houver Phi/mask
 RANDOM_SEED = 42
 WAVELET = "db8"  # wavelet para parte wavelet
 WAVELET_LEVEL = 4  # nível de decomposição (tente 1..4)
-METHODS = ["OMP", "LASSO"]  # quais métodos testar
+METHODS = ["LASSO"]  # quais métodos testar
 OMP_candidates = [
     10,
     20,
@@ -32,22 +32,64 @@ OMP_candidates = [
     50,
     60,
 ]  # valores de n_nonzero_coefs para testar (ajuste conforme k90)
-LASSO_alphas = [
-    1e-5,
-    1e-4,
-    1e-3,
-    1e-2,
-]  # alphas para Lasso
+LASSO_alphas = [1e-4]  # alphas para Lasso
 REFINE_SPIKE_THRESHOLD_K = 4.5  # k para MAD threshold de picos
 SAVE_PREFIX = os.path.join(DATA_DIR, "cs_result")  # prefixo para salvar outputs
 # ----------------------------
 
 np.random.seed(RANDOM_SEED)
 
+def plot_alpha(alpha_full, N):
+    plt.figure(figsize=(14,4))
+    plt.stem(alpha_full)
+    plt.title("Coeficientes α (Fourier + Wavelet)")
+    plt.xlabel("Índice do coeficiente")
+    plt.ylabel("Amplitude")
+    plt.axvline(N, color='red', linestyle='--', linewidth=2)
+    plt.text(N+5, max(alpha_full)*0.8, "Início da base Wavelet", color='red')
+    plt.grid(True)
+    # plt.show()
+    
+def plot_sparsity_pattern(alpha_full):
+    nnz = np.nonzero(alpha_full)[0]
+
+    plt.figure(figsize=(14,2))
+    plt.scatter(nnz, np.zeros_like(nnz), marker='|', s=200)
+    plt.title("Padrão de Esparsidade de α")
+    plt.xlabel("Índice do coeficiente")
+    plt.yticks([])
+    plt.grid(True)
+    # plt.show()
+    
+def plot_alpha_split(alpha_full, N):
+    alpha_I = alpha_full[:N]
+    alpha_wave = alpha_full[N:]
+
+    fig, ax = plt.subplots(2, 1, figsize=(14,6))
+
+    ax[0].stem(alpha_I)
+    ax[0].set_title("Coeficientes α — Parte 1 (Fourier / Identidade)")
+    ax[0].grid(True)
+
+    ax[1].stem(alpha_wave)
+    ax[1].set_title("Coeficientes α — Parte 2 (Wavelet)")
+    ax[1].grid(True)
+
+    plt.tight_layout()
+    # plt.show()
+
+def plot_alpha_hist(alpha_full):
+    plt.figure(figsize=(7,4))
+    plt.hist(alpha_full, bins=80)
+    plt.title("Distribuição das Magnitudes de α")
+    plt.xlabel("Valor do coeficiente")
+    plt.ylabel("Frequência")
+    plt.grid(True)
+    # plt.show()
+
 # ----------------------------
 # UTIL: carregar sinal / Phi / mask / y
 # ----------------------------
-
 
 def load_dot_mat_signal():
     mat_contents = sio.loadmat("data\ATPdraw\1MHz_samples.mat")
@@ -64,39 +106,37 @@ def load_dot_mat_signal():
 def load_csv_signal():
     # Carregue todos os arquivos CSV e combine-os em uma matriz X (17000 x 100)
     # E crie o vetor de rótulos y_labels (17000 x 1)
-
+    
     # ----------------------------------------------------
     # ESTA PARTE É UM EXEMPLO GENÉRICO DO SEED DATASET!
     # A implementação real dependerá da sua estrutura de arquivos.
     # Vou reescrever para o formato comum do SEED (17 arquivos CSV):
     # ----------------------------------------------------
-
-    # Substitua 'caminho/para/dados' pelo caminho real onde estão os CSVs,
+    
+    # Substitua 'caminho/para/dados' pelo caminho real onde estão os CSVs, 
     # que é o 'path' retornado pelo kagglehub.
     # Exemplo:
-    # data_path = Path(kagglehub.dataset_download("sumairaziz/seed-power-quality-disturbance-dataset"))
-
-    # Exemplo de leitura de um único arquivo (assumindo que o seu 'data.csv'
+    # data_path = Path(kagglehub.dataset_download("sumairaziz/seed-power-quality-disturbance-dataset")) 
+    
+    # Exemplo de leitura de um único arquivo (assumindo que o seu 'data.csv' 
     # já é a concatenação com uma coluna 'target'):
-
+    
     try:
         # Tenta carregar o DataFrame que causou o problema
         df = pd.read_csv("compressed_data_classification/data.csv")
     except FileNotFoundError:
         # Se não encontrar, você precisará carregar os 17 arquivos e concatenar
-        print(
-            "[Alerta] 'data.csv' não encontrado. Garanta que você carregou o dataset."
-        )
-        return None, None, None  # Retorna algo nulo para interromper
+        print("[Alerta] 'data.csv' não encontrado. Garanta que você carregou o dataset.")
+        return None, None, None # Retorna algo nulo para interromper
 
     # A dimensão X será (17000, 100)
-    X = df.filter(regex=r"^s\d+$").values  # Seleciona apenas as colunas 's1' a 's100'
-
+    X = df.filter(regex=r'^s\d+$').values  # Seleciona apenas as colunas 's1' a 's100'
+    
     # O rótulo é a coluna 'target'
-    y_labels = df["target"].values
-
+    y_labels = df['target'].values
+    
     # N é o comprimento de um ÚNICO sinal (100 amostras)
-    N_signal = X.shape[1]
+    N_signal = X.shape[1] 
 
     return X, y_labels, N_signal
 
@@ -233,121 +273,22 @@ def alpha_to_reconstruction(alpha_full, N, K, Psi_wave, shapes, wavelet_name=WAV
     x_waverec = pywt.waverec(s_coeffs, wavelet_name)[:N]
     return x_direct, x_waverec, alpha_I, alpha_wave
 
-
-# ----------------------------
-# Detectar picos via MAD e refinar amplitudes por LS limitada aos índices detectados
-# ----------------------------
-def detect_spikes_mad(x, k=REFINE_SPIKE_THRESHOLD_K):
-    med = np.median(x)
-    sigma = np.median(np.abs(x - med)) / 0.6745 + 1e-12
-    idx = np.where(np.abs(x - med) > k * sigma)[0]
-    return idx, med, sigma
-
-
-def refine_spikes_by_LS(Phi, meas_idx, y, spike_indices):
-    # Phi: M x N ; meas_idx: array indices (global indices of samples) in signal
-    # spike_indices: indices in the time-domain (global positions)
-    # constrói Phi_spikes (M x n_spikes) e resolve LS
-    if spike_indices.size == 0:
-        return np.array([])
-    M = Phi.shape[0]
-    # map each spike index to row positions inside meas_idx
-    Phi_sp = np.zeros((M, spike_indices.size))
-    for j, sidx in enumerate(spike_indices):
-        # filas onde meas_idx == sidx
-        pos = np.where(meas_idx == sidx)[0]
-        if pos.size > 0:
-            Phi_sp[pos, j] = 1.0
-    if np.all(Phi_sp == 0):
-        return np.zeros(spike_indices.size)
-    a, *_ = np.linalg.lstsq(Phi_sp, y, rcond=None)
-    return a
-
-
-# ----------------------------
-# Métricas
-# ----------------------------
-def mse(x, y):
-    return float(np.mean((x - y) ** 2))
-
-
-def psnr(x_original, x_reconstruido):
-    """Calcula a Razão Sinal-Ruído de Pico (PSNR) em dB."""
-    # A potência máxima (MAX^2) para sinais normalizados entre -1 e 1 é 1.0 (1^2)
-    # Se MAX^2 = (np.max(x_original)**2), seria mais robusto se o sinal não fosse normalizado
-    # Assumindo sinais normalizados: MAX_I = 1.0
-    MAX_I = 1.0
-
-    # Calcular o Erro Quadrático Médio (MSE)
-    err = mse(x_original, x_reconstruido)
-
-    # Previne divisão por zero (caso os sinais sejam idênticos)
-    if err == 0:
-        return float("inf")
-
-    # PSNR = 10 * log10 (MAX_I^2 / MSE)
-    return 10.0 * np.log10((MAX_I**2) / err)
-
-
-def correlation_coefficient(x_original, x_reconstruido):
-    """Calcula o Coeficiente de Correlação (CC) entre os sinais."""
-    # O np.corrcoef retorna uma matriz 2x2. Queremos o valor off-diagonal (0, 1) ou (1, 0)
-    if x_original.ndim > 1:
-        x_original = x_original.flatten()
-    if x_reconstruido.ndim > 1:
-        x_reconstruido = x_reconstruido.flatten()
-
-    return np.corrcoef(x_original, x_reconstruido)[0, 1]
-
-
-# ----------------------------
-# Interpolação dos resultados
-# ----------------------------
-def intepolate(signal):
-    valid_indices = np.where(signal != 0)[0]
-    valid_values = signal[valid_indices]
-    f_interp = interp1d(
-        valid_indices, valid_values, kind="linear", fill_value="extrapolate"
-    )
-    indices_to_fill = np.arange(len(signal))
-    interpolated_signal = f_interp(indices_to_fill)
-    return interpolated_signal
-
-
-# ----------------------------
+#---------------------
 # MAIN: integra tudo
 # ----------------------------
-def pipeline_full():
+def pipeline_full(X, y_labels):
     # load signal
     # sinal = load_dot_mat_signal()
     # sinal = load_csv_signal()
-    sinal, y_labels, N = load_csv_signal()
-    # N = sinal.size
+    # sinal, y_labels, N = load_csv_signal()
+    N = X.shape[1] 
     print(f"[info] sinal carregado, N = {N}")
 
     # carregar Phi/mask/meas_idx se existir
     phi_or_mask = try_load_Phi_or_mask(DATA_DIR)
 
     if phi_or_mask is None:
-        # criar mask aleatória com SAMPLE_M amostras (sem repetição)
-        meas_idx = np.random.choice(N, size=SAMPLE_M, replace=False)
-        meas_idx = np.sort(meas_idx)
-        Phi, meas_idx = construct_Phi_from_mask_or_meas_idx(meas_idx, N)
-        print(f"[info] Phi construído aleatoriamente com M = {meas_idx.size}")
-    elif isinstance(phi_or_mask, np.ndarray) and phi_or_mask.ndim == 2:
-        Phi = phi_or_mask
-        # derive meas_idx as rows with single 1 per row
-        # assume each row has single 1 at sample position
-        rows = Phi.shape[0]
-        meas_idx = []
-        for i in range(rows):
-            pos = np.where(Phi[i] != 0)[0]
-            if pos.size > 0:
-                meas_idx.append(pos[0])
-            else:
-                meas_idx.append(-1)
-        meas_idx = np.array(meas_idx)
-        print(f"[info] Phi carregado, derived meas_idx length = {meas_idx.size}")
+        raise FileNotFoundError("Erro ao carregar a matriz de sensoriamento Phi!")
     else:
         # mask_or_idx
         if phi_or_mask.dtype == bool:
@@ -357,7 +298,7 @@ def pipeline_full():
                 np.array(phi_or_mask, dtype=int), N
             )
         print(f"[info] Phi construído a partir de mask/meas_idx, M = {meas_idx.size}")
-
+    
     # construir Psi_wave e shapes
     Psi_wave, shapes = build_wavelet_matrix_and_shapes(
         N, wavelet=WAVELET, level=WAVELET_LEVEL
@@ -371,67 +312,21 @@ def pipeline_full():
 
     # build A and normalize
     A, A_norm, col_norms = build_A_and_normalize(Phi, Psi_concat)
-
-    X_matrix = sinal
-    Phi_T = (
-        Phi.T
-    )  # Calculando a transposta de phi por causa do erro de dimensionalidade
+    
+    X_matrix = X
+    Phi_T = Phi.T # Calculando a transposta de phi por causa do erro de dimensionalidade
     y_cs_matrix = X_matrix.dot(Phi_T)
-
-    ##########################################################################
-    # SALVANDO AS AMOSTRAS COMPRIMIDAS PARA TREINAMENTO DO modelo de linguagem
-    ##########################################################################
-
-    data_compressed = pd.DataFrame(y_cs_matrix)
-    data_compressed.columns = [f"m_{i+1}" for i in range(y_cs_matrix.shape[1])]
-    data_compressed["target"] = y_labels
-    output_file_name = "compressed_data_classification/seed_data_compressed_M40_db8.csv"
-    data_compressed.to_csv(output_file_name, index=False)
-    print(f"\n[SAVE] Dataset comprimido salvo em: {output_file_name}")
-    np.save("compressed_data_classification/Phi_final_M40.npy", Phi)
-
-    ##########################################################################
-
-    # Para fins de medição das métricas é preciso aplica-las somente à um sinal
-    sinal_to_reconstruct = X_matrix[0, :]  # Primeira linha do df
-    y = y_cs_matrix[0, :]  # <- Sinal amostrado aqui
+    
+    # Obter um sinal de cada vez para 
+    sinal_to_reconstruct = X_matrix[0,:] # Primeira linha do df
+    y = y_cs_matrix[0,:] # <- Sinal amostrado aqui
     # y = sinal  # <- Considerando o sinal original como sendo o amostrado
-
+    
     print(
         f"[info] A shape = {A.shape}, A_norm shape = {A_norm.shape}, y shape = {y.shape}"
     )
 
     results = {}
-
-    # Sweep OMP candidates
-    if "OMP" in METHODS:
-        results["OMP"] = []
-        for S in OMP_candidates:
-            if S <= 0 or S > A_norm.shape[1]:
-                continue
-            try:
-                coef_norm = solve_omp(A_norm, y, S)
-                coef = coef_norm / col_norms
-                x_direct, x_waverec, alpha_I, alpha_wave = alpha_to_reconstruction(
-                    coef, N, K, Psi_wave, shapes, wavelet_name=WAVELET
-                )
-                m = mse(sinal_to_reconstruct, x_direct)
-                p = psnr(sinal_to_reconstruct, x_direct)
-                cc = correlation_coefficient(sinal_to_reconstruct, x_direct)
-                results["OMP"].append(
-                    {
-                        "S": S,
-                        "mse": m,
-                        "psnr": p,
-                        "cc": cc,
-                        "coef": coef,
-                        "x_direct": x_direct,
-                        "x_waverec": x_waverec,
-                    }
-                )
-                print(f"[OMP] S={S} MSE={m:.4e} PSNR={p:.4e} CC={cc:.4e}")
-            except Exception as e:
-                print(f"[OMP] erro S={S} -> {e}")
 
     # Sweep Lasso alphas
     if "LASSO" in METHODS:
@@ -460,7 +355,7 @@ def pipeline_full():
                 print(f"[LASSO] alpha={a} MSE={m:.4e} PSNR={p:.4e} CC={cc:.4e}")
             except Exception as e:
                 print(f"[LASSO] erro alpha={a} -> {e}")
-
+ 
     # Escolher o melhor resultado de cada família para posterior refinamento
     best = {}
     if results.get("OMP"):
@@ -490,6 +385,33 @@ def pipeline_full():
     else:
         print("[warn] nenhum resultado gerado (talvez parâmetros inválidos)")
         return results
+    
+    # -----------------------------------------------------
+    # SALVAR COEFICIENTES ALPHA (coeficientes da reconstrução)
+    # -----------------------------------------------------
+    coef = chosen_res["coef"]  # Vetor alpha_full (N + K)
+    plot_alpha(coef, N)
+    plot_sparsity_pattern(coef)
+    plot_alpha_split(coef, N)
+    plot_alpha_hist(coef)
+
+    # Se quiser separar alfa identidade e alfa wavelet:
+    alpha_I = coef[:N]
+    alpha_wave = coef[N:]
+
+    df_alpha = pd.DataFrame({
+        "coef_index": np.arange(len(coef)),
+        "alpha_value": coef
+    })
+
+    # Criar diretório se não existir
+    Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
+
+    alpha_output = os.path.join(DATA_DIR, "alpha_coefficients.csv")
+    df_alpha.to_csv(alpha_output, index=False)
+
+    print(f"[SAVE] Coeficientes alpha salvos em: {alpha_output}")
+    # -----------------------------------------------------
 
     # detect spikes em reconstrução direta e refinar amplitudes
     x_direct = chosen_res["x_direct"]
@@ -573,3 +495,4 @@ def pipeline_full():
 if __name__ == "__main__":
     out = pipeline_full()
     print("Pipeline finalizado.")
+    plt.show()

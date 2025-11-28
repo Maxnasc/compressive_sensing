@@ -11,11 +11,15 @@ from pathlib import Path
 from sklearn.model_selection import GridSearchCV, ParameterGrid
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from sklearn.svm import SVC # <-- Alteração: Importando SVC
+
+# Imports de funções auxiliares
+from compressed_data_classification.CS_transformer import CompressiveSensingTransformer
 from codecarbon import OfflineEmissionsTracker
+from sklearn.pipeline import Pipeline
 
 # --- A função principal foi renomeada e os parâmetros internos ajustados ---
 
-def svc_rbf_training(X_train, y_train, X_test, y_test, X):
+def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique):
     """
     Treina e avalia um classificador SVM com Kernel RBF (SVC) 
     usando Grid Search para um problema de classificação multiclasse.
@@ -23,43 +27,50 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X):
 
     # --- Configurações de Paths ---
     # É uma boa prática garantir que os diretórios existam
-    base_path = Path("compressed_data_classification/models/")
+    base_path = Path("compressed_data_classification/models/svc")
     Path(base_path, "emissions").mkdir(parents=True, exist_ok=True)
     
     # Ajustando paths para o SVC (RBF)
-    model_path = "compressed_data_classification/models/svc_rbf_model.pkl"
-    results_path = "sensor_potencial_hidrico_ai/model/svc_rbf/svc_rbf_results_optical.json"
-    scatter_plot_path = "sensor_potencial_hidrico_ai/model/svc_rbf/plots/Confusion_Matrix_optical.png"
+    model_path = f"compressed_data_classification/models/svc_rbf_model_{technique}.pkl"
+    results_path = f"sensor_potencial_hidrico_ai/model/svc_rbf/svc_rbf_results_optical_{technique}.json"
+    scatter_plot_path = f"sensor_potencial_hidrico_ai/model/svc_rbf/plots/Confusion_Matrix_optical_{technique}.png"
 
 
     # Iniciando o tracker de emissões <- CODECARBON
     tracker = OfflineEmissionsTracker(
         country_iso_code="BRA",
-        output_file=Path(base_path, "emissions/emissions_SVC_RBF.csv").as_posix(),
+        output_file=Path(base_path, "emissions/emissions_SVC_RBF_{technique}.csv").as_posix(),
         log_level='critical'
     )
+    
+    # Instanciando o trasnformer de compressive sensing
+    cs_transformer = CompressiveSensingTransformer(technique=technique)
+    
+    # Modelo base: Support Vector Classifier
+    svc = SVC(random_state=42)
+    
+    pipeline = Pipeline([
+        ('cs_transformer', cs_transformer),
+        ('scv', svc)
+    ])
     
     # --- Hiperparâmetros para o SVC com Kernel RBF ---
     # C: Parâmetro de Regularização (inverso da força de regularização)
     # gamma: Coeficiente do kernel RBF (influencia a "alcance" de uma única amostra de treinamento)
     param_grid = {
-        "C": [0.1, 1, 10], # Regularização
-        "gamma": [0.001, 0.01, 0.1], # Kernel RBF
-        "kernel": ["rbf"], # Focando no Kernel RBF
-        "random_state": [42]
+        "scv__C": [0.1, 1, 10], # Regularização
+        "scv__gamma": [0.001, 0.01, 0.1], # Kernel RBF
+        "scv__kernel": ["rbf"], # Focando no Kernel RBF
+        "scv__random_state": [42]
     }
 
     total_combinations = len(ParameterGrid(param_grid))
     print(f"Total de Combinações do Grid Search: {total_combinations}")
 
-
-    # Modelo base: Support Vector Classifier
-    svc = SVC(random_state=42)
-
     # GridSearch com validação cruzada
     # Usando 'accuracy' como métrica principal para classificação multiclasse
     grid_search = GridSearchCV(
-        estimator=svc,
+        estimator=pipeline,
         param_grid=param_grid,
         cv=5,
         scoring="accuracy", # <-- Alteração: Usando métrica de classificação
