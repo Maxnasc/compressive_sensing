@@ -175,7 +175,7 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         # parallel
         if n_jobs == 1:
             alphas = np.vstack(
-                [self._compute_alpha_single(X[i], alpha_lasso) for i in range(num)]
+                [self._compute_alpha_single(X.iloc[i], alpha_lasso) for i in range(num)]
             )
         else:
             alphas = np.vstack(

@@ -7,6 +7,8 @@ from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.preprocessing import LabelEncoder
 import sys
 import os
+from rich.console import Console
+from rich.status import Status
 # import seaborn as sns
 # from ridge_regressor.ridge_regressor_training import ridge_training
 # from randon_forest.random_forest_training import random_forest_training
@@ -41,38 +43,40 @@ print("\nMapeamento de Classes:", class_mapping)
 X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.1, random_state=42)
 
 # Técnica de compressão de dados energy/topk/pca/pure_alpha/random_mesurements
-technique = 'random_mesurements'
+techniques = ['energy','topk','pca','pure_alpha','random_mesurements']
+
+# Console para exibir status
+console = Console()
 
 # Treinar usando os diferentes métodos de treinamento e salvar cada um
+for technique in techniques:
+    # Modelos
+    # print()
+    # print("RIDGE REGRESSOR")
+    # rr_info = ridge_training(X_train, y_train, X_test, y_test, X)
+    # print()
+    # print("RANDOM FOREST")
+    # rf_info = random_forest_training(X_train, y_train, X_test, y_test, X)
+    # print()
+    # print("XGBOOST")
+    # xgb_info = xgboost_training(X_train, y_train, X_test, y_test, X)
+    with Status(f"[bold green]Treinando MLP para {technique}...[/]", spinner="dots"):
+        mlp_info = mlp_training(X_train, y_train, X_test, y_test, X, technique)
+    print()
+    with Status(f"[bold green]Treinando SVM com RBF para {technique}...[/]", spinner="dots"):
+        svm_rbf = svc_rbf_training(X_train, y_train, X_test, y_test, X, technique)
+    # print()
+    # print("ADABOOST")
+    # ada_info = adaboost_training(X_train, y_train, X_test, y_test, X)
 
-# Modelos
-# print()
-# print("RIDGE REGRESSOR")
-# rr_info = ridge_training(X_train, y_train, X_test, y_test, X)
-# print()
-# print("RANDOM FOREST")
-# rf_info = random_forest_training(X_train, y_train, X_test, y_test, X)
-# print()
-# print("XGBOOST")
-# xgb_info = xgboost_training(X_train, y_train, X_test, y_test, X)
-print()
-print("MLP")
-mlp_info = mlp_training(X_train, y_train, X_test, y_test, X, technique)
-print()
-print("SVM_RBF")
-svm_rbf = svc_rbf_training(X_train, y_train, X_test, y_test, X, technique)
-# print()
-# print("ADABOOST")
-# ada_info = adaboost_training(X_train, y_train, X_test, y_test, X)
+    # Montando tabela de comparação entre os modelos
+    # df = pd.DataFrame([rr_info, rf_info, xgb_info, mlp_info])
+    # df = pd.DataFrame([rr_info, rf_info, mlp_info, ada_info])
+    df = pd.DataFrame([mlp_info, svm_rbf])
+    # df = df.drop('melhores_parametros')
 
-# Montando tabela de comparação entre os modelos
-# df = pd.DataFrame([rr_info, rf_info, xgb_info, mlp_info])
-# df = pd.DataFrame([rr_info, rf_info, mlp_info, ada_info])
-df = pd.DataFrame([mlp_info, svm_rbf])
-# df = df.drop('melhores_parametros')
-
-print(df)
-df.to_excel('sensor_potencial_hidrico_ai/model/resultados_modelos.xlsx')
+    print(df)
+    df.to_excel(f'sensor_potencial_hidrico_ai/model/resultados_modelos_{technique}.xlsx')
 
 # Mostrar todos os gráficos
 # plt.show()

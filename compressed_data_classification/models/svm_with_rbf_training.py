@@ -9,7 +9,7 @@ from pathlib import Path
 
 # Módulos do Sklearn para Classificação
 from sklearn.model_selection import GridSearchCV, ParameterGrid
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, mean_squared_error
 from sklearn.svm import SVC # <-- Alteração: Importando SVC
 
 # Imports de funções auxiliares
@@ -44,7 +44,7 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique):
     )
     
     # Instanciando o trasnformer de compressive sensing
-    cs_transformer = CompressiveSensingTransformer(technique=technique)
+    cs_transformer = CompressiveSensingTransformer(technique=technique, verbose=True)
     
     # Modelo base: Support Vector Classifier
     svc = SVC(random_state=42)
@@ -102,6 +102,7 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique):
     # Métricas de Classificação
     accuracy = accuracy_score(y_test, y_pred)
     report = classification_report(y_test, y_pred, zero_division=0)
+    mse = mean_squared_error(y_test, y_pred)
 
     print(f"\nDesempenho no conjunto de teste:")
     print(f"Acurácia (Accuracy): {accuracy:.4f}")
@@ -112,9 +113,10 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique):
     doc = {
         "melhores_parametros": grid_search.best_params_,
         "acuracia": round(accuracy, 4),
+        "mse": round(mse, 4),
         "relatorio_classificacao": report, # Pode ser útil salvar o relatório completo
         "n_combinations": total_combinations,
-        "mean_emission": round((emissions / total_combinations), 4) if total_combinations > 0 and total_combinations != None else 0,
+        # "mean_emission": round((emissions / total_combinations), 4) if total_combinations > 0 and total_combinations != None else 0,
     }
 
     # Garantir que o diretório de plots exista

@@ -23,7 +23,7 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique):
     )
     
     # Instanciando o compressive sensing transformer
-    cs_transformer = CompressiveSensingTransformer(technique=technique)
+    cs_transformer = CompressiveSensingTransformer(technique=technique, verbose=True)
 
     # Modelo base
     mlp = MLPClassifier(random_state=42)
@@ -83,14 +83,15 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique):
     print(f"\nDesempenho no conjunto de teste:")
     print(f"MSE: {mse:.4f}")
     print(f"ACURACIA: {accuracy:.4f}")
-    print(f"CLASSIF_REPORT: {report:.4f}")
+    print(f"CLASSIF_REPORT: {report}")
 
     doc = {
         "melhores_parametros": grid_search.best_params_,
         "acuracia": round(accuracy, 4),
+        "mse": round(mse, 4),
         "relatorio_classificacao": report, # Pode ser útil salvar o relatório completo
         "n_combinations": total_combinations,
-        "mean_emission": round((emissions / total_combinations), 4) if total_combinations > 0 and total_combinations != None else 0,
+        # "mean_emission": round((emissions / total_combinations), 4) if total_combinations > 0 and total_combinations != None else 0,
     }
 
     with open(f"compressed_data_classification/models/mlp/mlp_results_optical_{technique}.json", "w") as f:
