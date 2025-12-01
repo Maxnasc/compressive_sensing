@@ -31,9 +31,10 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique):
     Path(base_path, "emissions").mkdir(parents=True, exist_ok=True)
     
     # Ajustando paths para o SVC (RBF)
-    model_path = f"compressed_data_classification/models/svc_rbf_model_{technique}.pkl"
-    results_path = f"sensor_potencial_hidrico_ai/model/svc_rbf/svc_rbf_results_optical_{technique}.json"
-    scatter_plot_path = f"sensor_potencial_hidrico_ai/model/svc_rbf/plots/Confusion_Matrix_optical_{technique}.png"
+    model_path = f"compressed_data_classification/models/svc_rbf/svc_rbf_model_{technique}.pkl"
+    results_path = f"compressed_data_classification/models/svc_rbf/svc_rbf_results_optical_{technique}.json"
+    report_result_path = f"compressed_data_classification/models/svc_rbf/svc_rbf_report_result_optical_{technique}.json"
+    scatter_plot_path = f"compressed_data_classification/models/svc_rbf/plots/Confusion_Matrix_optical_{technique}.png"
 
 
     # Iniciando o tracker de emissões <- CODECARBON
@@ -50,7 +51,7 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique):
     svc = SVC(random_state=42)
     
     pipeline = Pipeline([
-        ('cs_transformer', cs_transformer),
+        # ('cs_transformer', cs_transformer),
         ('scv', svc)
     ])
     
@@ -124,6 +125,9 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique):
     
     with open(results_path, "w") as f:
         json.dump(doc, f, indent=4)
+
+    with open(report_result_path, "w") as f:
+        json.dump(report, f, indent=4)
 
     # --- Plot: Matriz de Confusão para 17 Classes ---
     # (Substitui os plots de regressão)

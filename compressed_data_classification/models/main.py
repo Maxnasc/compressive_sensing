@@ -43,7 +43,8 @@ print("\nMapeamento de Classes:", class_mapping)
 X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.1, random_state=42)
 
 # Técnica de compressão de dados energy/topk/pca/pure_alpha/random_mesurements
-techniques = ['energy','topk','pca','pure_alpha','random_mesurements']
+techniques = ['energy','topk','pca','pure_alpha','random_mesurements', 'original_data']
+# techniques = ['original_data']
 
 # Console para exibir status
 console = Console()

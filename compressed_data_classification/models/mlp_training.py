@@ -30,7 +30,7 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique):
     
     # Criando o pipeline
     pipeline = Pipeline([
-        ('cs_trasnformer', cs_transformer),
+        # ('cs_trasnformer', cs_transformer),
         ('mlp', mlp)
     ])
 
@@ -72,7 +72,7 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique):
     print(grid_search.best_params_)
 
     # Salvar o modelo ajustado
-    joblib.dump(best_model, f"compressed_data_classification/models/mlp_model_{technique}.pkl")
+    joblib.dump(best_model, f"compressed_data_classification/models/mlp/mlp_model_{technique}.pkl")
 
     # Avaliação no conjunto de teste
     y_pred = best_model.predict(X_test)
@@ -96,6 +96,9 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique):
 
     with open(f"compressed_data_classification/models/mlp/mlp_results_optical_{technique}.json", "w") as f:
         json.dump(doc, f)
+
+    with open(f"compressed_data_classification/models/mlp/mlp_report_result_optical_{technique}.json", "w") as f:
+        json.dump(report, f, indent=4)
         
     # --- Plot: Matriz de Confusão para 17 Classes ---
     # (Substitui os plots de regressão)
