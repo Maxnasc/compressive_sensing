@@ -271,6 +271,9 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
 
         elif self.technique == "pure_alpha":
             return alphas, alphas
+        
+        elif self.technique == "original_data":
+            return X, alphas
 
         else:
             raise ValueError(
