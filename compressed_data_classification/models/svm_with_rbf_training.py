@@ -50,10 +50,16 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique):
     # Modelo base: Support Vector Classifier
     svc = SVC(random_state=42)
     
-    pipeline = Pipeline([
-        # ('cs_transformer', cs_transformer),
-        ('scv', svc)
-    ])
+    if technique == 'original_data':
+        pipeline = Pipeline([
+            # ('cs_transformer', cs_transformer),
+            ('scv', svc)
+        ])
+    else:
+        pipeline = Pipeline([
+            ('cs_transformer', cs_transformer),
+            ('scv', svc)
+        ])
     
     # --- Hiperparâmetros para o SVC com Kernel RBF ---
     # C: Parâmetro de Regularização (inverso da força de regularização)

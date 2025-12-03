@@ -29,10 +29,16 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique):
     mlp = MLPClassifier(random_state=42)
     
     # Criando o pipeline
-    pipeline = Pipeline([
-        # ('cs_trasnformer', cs_transformer),
-        ('mlp', mlp)
-    ])
+    if technique == 'original_data':
+        pipeline = Pipeline([
+            # ('cs_trasnformer', cs_transformer),
+            ('mlp', mlp)
+        ])
+    else:
+        pipeline = Pipeline([
+            ('cs_trasnformer', cs_transformer),
+            ('mlp', mlp)
+        ])
 
     param_grid = {
         "mlp__hidden_layer_sizes": [(20, 10), (10, 10), (15, 10)],
