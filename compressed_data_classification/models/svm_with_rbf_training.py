@@ -40,7 +40,7 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique):
     # Iniciando o tracker de emissões <- CODECARBON
     tracker = OfflineEmissionsTracker(
         country_iso_code="BRA",
-        output_file=Path(base_path, "emissions/emissions_SVC_RBF_{technique}.csv").as_posix(),
+        output_file=f"compressed_data_classification/models/emissions/emissions_SVC_RBF_{technique}.csv",
         log_level='critical'
     )
     
