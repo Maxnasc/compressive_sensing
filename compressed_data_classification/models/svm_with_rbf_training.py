@@ -31,10 +31,10 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique):
     Path(base_path, "emissions").mkdir(parents=True, exist_ok=True)
     
     # Ajustando paths para o SVC (RBF)
-    model_path = f"compressed_data_classification/models/svc_rbf/svc_rbf_model_{technique}.pkl"
-    results_path = f"compressed_data_classification/models/svc_rbf/svc_rbf_results_optical_{technique}.json"
-    report_result_path = f"compressed_data_classification/models/svc_rbf/svc_rbf_report_result_optical_{technique}.json"
-    scatter_plot_path = f"compressed_data_classification/models/svc_rbf/plots/Confusion_Matrix_optical_{technique}.png"
+    model_path = f"compressed_data_classification/models/best_models/svc_rbf/svc_rbf_model_{technique}.pkl"
+    results_path = f"compressed_data_classification/models/best_models/svc_rbf/svc_rbf_results_optical_{technique}.json"
+    report_result_path = f"compressed_data_classification/models/best_models/svc_rbf/svc_rbf_report_result_optical_{technique}.json"
+    scatter_plot_path = f"compressed_data_classification/models/best_models/svc_rbf/plots/Confusion_Matrix_optical_{technique}.png"
 
 
     # Iniciando o tracker de emissões <- CODECARBON
@@ -70,6 +70,13 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique):
         "scv__kernel": ["rbf"], # Focando no Kernel RBF
         "scv__random_state": [42]
     }
+    
+    # Melhores parâmetros para cada técnica
+    # Carregando o json com as melhores métricas
+    with open(f'compressed_data_classification/models/svc_rbf/svc_rbf_results_optical_{technique}.json') as arq:
+        result_json_content = json.load(arq)
+    
+    best_param_grid = result_json_content['melhores_parametros']
 
     total_combinations = len(ParameterGrid(param_grid))
     print(f"Total de Combinações do Grid Search: {total_combinations}")
@@ -78,7 +85,7 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique):
     # Usando 'accuracy' como métrica principal para classificação multiclasse
     grid_search = GridSearchCV(
         estimator=pipeline,
-        param_grid=param_grid,
+        param_grid=best_param_grid,
         cv=5,
         scoring="accuracy", # <-- Alteração: Usando métrica de classificação
         n_jobs=-1,

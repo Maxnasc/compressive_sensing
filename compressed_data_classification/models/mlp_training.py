@@ -50,13 +50,20 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique):
         "mlp__max_iter": [5000, 10000],
         "mlp__solver": ["lbfgs"],
     }
+    
+    # Melhores parâmetros para cada técnica
+    # Carregando o json com as melhores métricas
+    with open(f'compressed_data_classification/models/mlp/mlp_results_{technique}.json') as arq:
+        result_json_content = json.load(arq)
+    
+    best_param_grid = result_json_content['melhores_parametros']
 
     total_combinations = len(ParameterGrid(param_grid))
 
     # GridSearch com validação cruzada
     grid_search = GridSearchCV(
         estimator=pipeline,
-        param_grid=param_grid,
+        param_grid=best_param_grid,
         cv=5,
         scoring="neg_mean_squared_error",
         n_jobs=-1,
@@ -78,7 +85,7 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique):
     print(grid_search.best_params_)
 
     # Salvar o modelo ajustado
-    joblib.dump(best_model, f"compressed_data_classification/models/mlp/mlp_model_{technique}.pkl")
+    joblib.dump(best_model, f"compressed_data_classification/models/best_models/mlp/mlp_model_{technique}.pkl")
 
     # Avaliação no conjunto de teste
     y_pred = best_model.predict(X_test)
@@ -100,10 +107,10 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique):
         # "mean_emission": round((emissions / total_combinations), 4) if total_combinations > 0 and total_combinations != None else 0,
     }
 
-    with open(f"compressed_data_classification/models/mlp/mlp_results_{technique}.json", "w") as f:
+    with open(f"compressed_data_classification/models/best_models/mlp/mlp_results_{technique}.json", "w") as f:
         json.dump(doc, f)
 
-    with open(f"compressed_data_classification/models/mlp/mlp_report_result_{technique}.json", "w") as f:
+    with open(f"compressed_data_classification/models/best_models/mlp/mlp_report_result_{technique}.json", "w") as f:
         json.dump(report, f, indent=4)
         
     # --- Plot: Matriz de Confusão para 17 Classes ---
@@ -124,7 +131,7 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique):
     plt.ylabel("Classe Verdadeira")
     plt.xlabel("Classe Predita")
     plt.tight_layout()
-    plt.savefig(f"compressed_data_classification/models/mlp/confusion_matrix_{technique}.png")
+    plt.savefig(f"compressed_data_classification/models/best_models/mlp/confusion_matrix_{technique}.png")
     # plt.show()
 
     return doc
