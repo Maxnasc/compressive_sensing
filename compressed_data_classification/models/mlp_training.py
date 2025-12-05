@@ -56,7 +56,19 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique):
     with open(f'compressed_data_classification/models/mlp/mlp_results_{technique}.json') as arq:
         result_json_content = json.load(arq)
     
-    best_param_grid = result_json_content['melhores_parametros']
+    best_param_grid = {
+        "mlp__hidden_layer_sizes": [(result_json_content['melhores_parametros']['mlp__hidden_layer_sizes'][0], result_json_content['melhores_parametros']['mlp__hidden_layer_sizes'][1])],
+        "mlp__activation": [result_json_content['melhores_parametros']['mlp__activation']],
+        "mlp__alpha": [result_json_content['melhores_parametros']['mlp__alpha']],
+        "mlp__early_stopping": [result_json_content['melhores_parametros']['mlp__early_stopping']],
+        "mlp__learning_rate": [result_json_content['melhores_parametros']['mlp__learning_rate']],
+        "mlp__learning_rate_init": [result_json_content['melhores_parametros']['mlp__learning_rate_init']],
+        "mlp__max_iter": [result_json_content['melhores_parametros']['mlp__max_iter']],
+        "mlp__solver": [result_json_content['melhores_parametros']['mlp__solver']],
+    }
+    
+    
+    result_json_content['melhores_parametros']
 
     total_combinations = len(ParameterGrid(param_grid))
 

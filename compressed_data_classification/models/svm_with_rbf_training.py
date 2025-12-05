@@ -76,7 +76,12 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique):
     with open(f'compressed_data_classification/models/svc_rbf/svc_rbf_results_optical_{technique}.json') as arq:
         result_json_content = json.load(arq)
     
-    best_param_grid = result_json_content['melhores_parametros']
+    best_param_grid = {
+        "scv__C": [result_json_content['melhores_parametros']['scv__C']],
+        "scv__gamma": [result_json_content['melhores_parametros']['scv__gamma']],
+        "scv__kernel": [result_json_content['melhores_parametros']['scv__kernel']],
+        "scv__random_state": [42]
+    }
 
     total_combinations = len(ParameterGrid(param_grid))
     print(f"Total de Combinações do Grid Search: {total_combinations}")
