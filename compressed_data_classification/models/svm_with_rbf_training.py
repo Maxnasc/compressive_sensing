@@ -9,7 +9,7 @@ from pathlib import Path
 
 # Módulos do Sklearn para Classificação
 from sklearn.model_selection import GridSearchCV, ParameterGrid
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, mean_squared_error
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, mean_squared_error, roc_auc_score
 from sklearn.svm import SVC # <-- Alteração: Importando SVC
 
 # Imports de funções auxiliares
@@ -31,10 +31,10 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique):
     Path(base_path, "emissions").mkdir(parents=True, exist_ok=True)
     
     # Ajustando paths para o SVC (RBF)
-    model_path = f"compressed_data_classification/models/best_models/svc_rbf/svc_rbf_model_{technique}.pkl"
-    results_path = f"compressed_data_classification/models/best_models/svc_rbf/svc_rbf_results_optical_{technique}.json"
-    report_result_path = f"compressed_data_classification/models/best_models/svc_rbf/svc_rbf_report_result_optical_{technique}.json"
-    scatter_plot_path = f"compressed_data_classification/models/best_models/svc_rbf/plots/Confusion_Matrix_optical_{technique}.png"
+    model_path = f"compressed_data_classification/models/svc_rbf/svc_rbf_model_{technique}.pkl"
+    results_path = f"compressed_data_classification/models/svc_rbf/svc_rbf_results_optical_{technique}.json"
+    report_result_path = f"compressed_data_classification/models/svc_rbf/svc_rbf_report_result_optical_{technique}.json"
+    scatter_plot_path = f"compressed_data_classification/models/svc_rbf/plots/Confusion_Matrix_optical_{technique}.png"
 
 
     # Iniciando o tracker de emissões <- CODECARBON
@@ -53,22 +53,23 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique):
     if technique == 'original_data':
         pipeline = Pipeline([
             # ('cs_transformer', cs_transformer),
-            ('scv', svc)
+            ('svc', svc)
         ])
     else:
         pipeline = Pipeline([
             ('cs_transformer', cs_transformer),
-            ('scv', svc)
+            ('svc', svc)
         ])
     
     # --- Hiperparâmetros para o SVC com Kernel RBF ---
     # C: Parâmetro de Regularização (inverso da força de regularização)
     # gamma: Coeficiente do kernel RBF (influencia a "alcance" de uma única amostra de treinamento)
     param_grid = {
-        "scv__C": [0.1, 1, 10], # Regularização
-        "scv__gamma": [0.001, 0.01, 0.1], # Kernel RBF
-        "scv__kernel": ["rbf"], # Focando no Kernel RBF
-        "scv__random_state": [42]
+        "svc__C": [0.1, 1, 10], # Regularização
+        "svc__gamma": [0.001, 0.01, 0.1], # Kernel RBF
+        "svc__kernel": ["rbf"], # Focando no Kernel RBF
+        "svc__random_state": [42],
+        "svc__probability": [True], # Necessário para predict_proba
     }
     
     # Melhores parâmetros para cada técnica
@@ -76,12 +77,12 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique):
     with open(f'compressed_data_classification/models/svc_rbf/svc_rbf_results_optical_{technique}.json') as arq:
         result_json_content = json.load(arq)
     
-    best_param_grid = {
-        "scv__C": [result_json_content['melhores_parametros']['scv__C']],
-        "scv__gamma": [result_json_content['melhores_parametros']['scv__gamma']],
-        "scv__kernel": [result_json_content['melhores_parametros']['scv__kernel']],
-        "scv__random_state": [42]
-    }
+    # best_param_grid = {
+    #     "svc__C": [result_json_content['melhores_parametros']['svc__C']],
+    #     "svc__gamma": [result_json_content['melhores_parametros']['svc__gamma']],
+    #     "svc__kernel": [result_json_content['melhores_parametros']['svc__kernel']],
+    #     "svc__random_state": [42]
+    # }
 
     total_combinations = len(ParameterGrid(param_grid))
     print(f"Total de Combinações do Grid Search: {total_combinations}")
@@ -90,9 +91,9 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique):
     # Usando 'accuracy' como métrica principal para classificação multiclasse
     grid_search = GridSearchCV(
         estimator=pipeline,
-        param_grid=best_param_grid,
+        param_grid=param_grid,
         cv=5,
-        scoring="accuracy", # <-- Alteração: Usando métrica de classificação
+        scoring="roc_auc_ovr", # <-- Alteração: Usando métrica de classificação
         n_jobs=-1,
         verbose=1,
     )
@@ -119,9 +120,11 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique):
     y_pred = best_model.predict(X_test)
     
     # Métricas de Classificação
-    accuracy = accuracy_score(y_test, y_pred)
-    report = classification_report(y_test, y_pred, zero_division=0)
+    y_pred_proba = best_model.predict_proba(X_test)
     mse = mean_squared_error(y_test, y_pred)
+    accuracy = accuracy_score(y_test, y_pred)
+    roc_score = roc_auc_score(y_test, y_pred_proba, multi_class='ovr')
+    report = classification_report(y_test, y_pred, zero_division=0)
 
     print(f"\nDesempenho no conjunto de teste:")
     print(f"Acurácia (Accuracy): {accuracy:.4f}")
@@ -132,6 +135,7 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique):
     doc = {
         "melhores_parametros": grid_search.best_params_,
         "acuracia": round(accuracy, 4),
+        "roc_auc_score": round(roc_score, 4),
         "mse": round(mse, 4),
         "relatorio_classificacao": report, # Pode ser útil salvar o relatório completo
         "n_combinations": total_combinations,
