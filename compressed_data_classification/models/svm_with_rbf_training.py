@@ -31,16 +31,16 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique):
     Path(base_path, "emissions").mkdir(parents=True, exist_ok=True)
     
     # Ajustando paths para o SVC (RBF)
-    model_path = f"compressed_data_classification/models/svc_rbf/svc_rbf_model_{technique}.pkl"
-    results_path = f"compressed_data_classification/models/svc_rbf/svc_rbf_results_optical_{technique}.json"
-    report_result_path = f"compressed_data_classification/models/svc_rbf/svc_rbf_report_result_optical_{technique}.json"
-    scatter_plot_path = f"compressed_data_classification/models/svc_rbf/plots/Confusion_Matrix_optical_{technique}.png"
+    model_path = f"compressed_data_classification/models/best_models/svc_rbf/svc_rbf_model_{technique}.pkl"
+    results_path = f"compressed_data_classification/models/best_models/svc_rbf/svc_rbf_results_optical_{technique}.json"
+    report_result_path = f"compressed_data_classification/models/best_models/svc_rbf/svc_rbf_report_result_optical_{technique}.json"
+    scatter_plot_path = f"compressed_data_classification/models/best_models/svc_rbf/plots/Confusion_Matrix_optical_{technique}.png"
 
 
     # Iniciando o tracker de emissões <- CODECARBON
     tracker = OfflineEmissionsTracker(
         country_iso_code="BRA",
-        output_file=f"compressed_data_classification/models/emissions/emissions_SVC_RBF_{technique}.csv",
+        output_file=f"compressed_data_classification/models/best_models/emissions/emissions_SVC_RBF_{technique}.csv",
         log_level='critical'
     )
     
@@ -77,12 +77,13 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique):
     with open(f'compressed_data_classification/models/svc_rbf/svc_rbf_results_optical_{technique}.json') as arq:
         result_json_content = json.load(arq)
     
-    # best_param_grid = {
-    #     "svc__C": [result_json_content['melhores_parametros']['svc__C']],
-    #     "svc__gamma": [result_json_content['melhores_parametros']['svc__gamma']],
-    #     "svc__kernel": [result_json_content['melhores_parametros']['svc__kernel']],
-    #     "svc__random_state": [42]
-    # }
+    best_param_grid = {
+        "svc__C": [result_json_content['melhores_parametros']['svc__C']],
+        "svc__gamma": [result_json_content['melhores_parametros']['svc__gamma']],
+        "svc__kernel": [result_json_content['melhores_parametros']['svc__kernel']],
+        "svc__random_state": [42],
+        "svc__probability": [True], # Necessário para predict_proba
+    }
 
     total_combinations = len(ParameterGrid(param_grid))
     print(f"Total de Combinações do Grid Search: {total_combinations}")
@@ -91,7 +92,7 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique):
     # Usando 'accuracy' como métrica principal para classificação multiclasse
     grid_search = GridSearchCV(
         estimator=pipeline,
-        param_grid=param_grid,
+        param_grid=best_param_grid,
         cv=5,
         scoring="roc_auc_ovr", # <-- Alteração: Usando métrica de classificação
         n_jobs=-1,
