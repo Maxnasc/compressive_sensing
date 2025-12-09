@@ -14,13 +14,13 @@ from pathlib import Path
 from compressed_data_classification.CS_transformer import CompressiveSensingTransformer
 
 
-def mlp_training(X_train, y_train, X_test, y_test, X, technique):
+def mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
 
     # Iniciando o tracker de emissões <- CODECARBON
-    tracker = OfflineEmissionsTracker(
-        country_iso_code="BRA",
-        output_file=f"compressed_data_classification/models/best_models/emissions/emissions_MLP_{technique}.csv", log_level='critical'
-    )
+    # tracker = OfflineEmissionsTracker(
+    #     country_iso_code="BRA",
+    #     output_file=f"compressed_data_classification/models/best_models/emissions/emissions_MLP_{technique}.csv", log_level='critical'
+    # )
     
     # Instanciando o compressive sensing transformer
     cs_transformer = CompressiveSensingTransformer(technique=technique, verbose=True)
@@ -83,21 +83,24 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique):
     )
 
     # Iniciando as medições de carbono
-    tracker.start()
+    # tracker.start()
 
     # Executar busca
     grid_search.fit(X_train, y_train)
 
     # Finalizando as medições de carbono
-    emissions: float = tracker.stop()
+    # emissions: float = tracker.stop()
+    
+    # Carregando o modelo
 
     # Resultados
-    best_model = grid_search.best_estimator_
+    # best_model = grid_search.best_estimator_
+    best_model = joblib.load(f"compressed_data_classification/models/best_models/mlp/mlp_model_{technique}.pkl")
     print("\nMelhores hiperparâmetros encontrados:")
     print(grid_search.best_params_)
 
     # Salvar o modelo ajustado
-    joblib.dump(best_model, f"compressed_data_classification/models/best_models/mlp/mlp_model_{technique}.pkl")
+    # joblib.dump(best_model, f"compressed_data_classification/models/best_models/mlp/mlp_model_{technique}.pkl")
     # joblib.dump(best_model, f"compressed_data_classification/models/mlp/mlp_model_{technique}.pkl")
 
     # Avaliação no conjunto de teste
@@ -123,31 +126,38 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique):
         # "mean_emission": round((emissions / total_combinations), 4) if total_combinations > 0 and total_combinations != None else 0,
     }
 
-    with open(f"compressed_data_classification/models/best_models/mlp/mlp_results_{technique}.json", "w") as f:
-        json.dump(doc, f)
+    # with open(f"compressed_data_classification/models/best_models/mlp/mlp_results_{technique}.json", "w") as f:
+    #     json.dump(doc, f)
 
-    with open(f"compressed_data_classification/models/best_models/mlp/mlp_report_result_{technique}.json", "w") as f:
-        json.dump(report, f, indent=4)
+    # with open(f"compressed_data_classification/models/best_models/mlp/mlp_report_result_{technique}.json", "w") as f:
+    #     json.dump(report, f, indent=4)
         
     # --- Plot: Matriz de Confusão para 17 Classes ---
     # (Substitui os plots de regressão)
-    cm = confusion_matrix(y_test, y_pred)
-    
-    plt.figure(figsize=(12, 10))
+    # Carrega o encoder usado no treinamento
+    # label_encoder = joblib.load("compressed_data_classification/models/label_encoder.pkl")
+
+    # Converte back para os nomes originais
+    y_test_str = label_encoder.inverse_transform(y_test)
+    y_pred_str = label_encoder.inverse_transform(y_pred)
+
+    # Cria matriz de confusão com os labels originais
+    cm = confusion_matrix(y_test_str, y_pred_str, labels=label_encoder.classes_)
+
+    plt.figure(figsize=(14, 12))
     sns.heatmap(
-        cm, 
-        annot=True, 
-        fmt='d', 
+        cm,
+        annot=True,
+        fmt='d',
         cmap='Blues',
         cbar=False,
-        linewidths=.5,
-        linecolor='black'
+        xticklabels=label_encoder.classes_,
+        yticklabels=label_encoder.classes_
     )
-    plt.title("Matriz de Confusão (SVC RBF) - Classificação 17 Classes")
+    plt.title("Matriz de Confusão (MLP) - Labels Originais")
     plt.ylabel("Classe Verdadeira")
     plt.xlabel("Classe Predita")
     plt.tight_layout()
-    plt.savefig(f"compressed_data_classification/models/best_models/mlp/confusion_matrix_{technique}.png")
-    # plt.show()
+    plt.savefig(f"compressed_data_classification/models/best_models/mlp/mlp_confusion_matrix_labels_{technique}.png")
 
     return doc

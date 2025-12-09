@@ -73,4 +73,4 @@ def process_reports(directory, output_csv="combined_reports.csv"):
 # =============================
 
 # Basta colocar seus arquivos no mesmo diretório do script
-process_reports(directory="compressed_data_classification/models/svc_rbf", output_csv="compressed_data_classification/models/svc_rbf/resultado_final_svc_rbf.csv")
+process_reports(directory="compressed_data_classification/models/best_models/svc_rbf", output_csv="compressed_data_classification/models/best_models/svc_rbf/resultado_final_mlp.csv")

@@ -19,7 +19,7 @@ from sklearn.pipeline import Pipeline
 
 # --- A função principal foi renomeada e os parâmetros internos ajustados ---
 
-def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique):
+def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
     """
     Treina e avalia um classificador SVM com Kernel RBF (SVC) 
     usando Grid Search para um problema de classificação multiclasse.
@@ -34,15 +34,15 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique):
     model_path = f"compressed_data_classification/models/best_models/svc_rbf/svc_rbf_model_{technique}.pkl"
     results_path = f"compressed_data_classification/models/best_models/svc_rbf/svc_rbf_results_optical_{technique}.json"
     report_result_path = f"compressed_data_classification/models/best_models/svc_rbf/svc_rbf_report_result_optical_{technique}.json"
-    scatter_plot_path = f"compressed_data_classification/models/best_models/svc_rbf/plots/Confusion_Matrix_optical_{technique}.png"
+    scatter_plot_path = f"compressed_data_classification/models/best_models/svc_rbf/plots/svm_confusion_Matrix_optical_{technique}.png"
 
 
     # Iniciando o tracker de emissões <- CODECARBON
-    tracker = OfflineEmissionsTracker(
-        country_iso_code="BRA",
-        output_file=f"compressed_data_classification/models/best_models/emissions/emissions_SVC_RBF_{technique}.csv",
-        log_level='critical'
-    )
+    # tracker = OfflineEmissionsTracker(
+    #     country_iso_code="BRA",
+    #     output_file=f"compressed_data_classification/models/best_models/emissions/emissions_SVC_RBF_{technique}.csv",
+    #     log_level='critical'
+    # )
     
     # Instanciando o trasnformer de compressive sensing
     cs_transformer = CompressiveSensingTransformer(technique=technique, verbose=True)
@@ -100,22 +100,23 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique):
     )
 
     # Iniciando as medições de carbono
-    tracker.start()
+    # tracker.start()
 
     # Executar busca
     # Atenção: SVC requer que y_train seja um vetor de classes (0, 1, ..., 16)
     grid_search.fit(X_train, y_train)
 
     # Finalizando as medições de carbono
-    emissions: float = tracker.stop()
+    # emissions: float = tracker.stop()
 
     # Resultados
-    best_model = grid_search.best_estimator_
+    # best_model = grid_search.best_estimator_
+    best_model = joblib.load(model_path)
     print("\nMelhores hiperparâmetros encontrados:")
     print(grid_search.best_params_)
 
     # Salvar o modelo ajustado
-    joblib.dump(best_model, model_path)
+    # joblib.dump(best_model, model_path)
 
     # Avaliação no conjunto de teste
     y_pred = best_model.predict(X_test)
@@ -146,15 +147,19 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique):
     # Garantir que o diretório de plots exista
     Path(scatter_plot_path).parent.mkdir(parents=True, exist_ok=True)
     
-    with open(results_path, "w") as f:
-        json.dump(doc, f, indent=4)
+    # with open(results_path, "w") as f:
+    #     json.dump(doc, f, indent=4)
 
-    with open(report_result_path, "w") as f:
-        json.dump(report, f, indent=4)
+    # with open(report_result_path, "w") as f:
+    #     json.dump(report, f, indent=4)
 
     # --- Plot: Matriz de Confusão para 17 Classes ---
     # (Substitui os plots de regressão)
-    cm = confusion_matrix(y_test, y_pred)
+    
+    y_test_str = label_encoder.inverse_transform(y_test)
+    y_pred_str = label_encoder.inverse_transform(y_pred)
+    
+    cm = confusion_matrix(y_test_str, y_pred_str, labels=label_encoder.classes_)
     
     plt.figure(figsize=(12, 10))
     sns.heatmap(

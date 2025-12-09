@@ -62,11 +62,11 @@ for technique in techniques:
     # print("XGBOOST")
     # xgb_info = xgboost_training(X_train, y_train, X_test, y_test, X)
     with Status(f"[bold green]Treinando MLP para {technique}...[/]", spinner="dots"):
-        mlp_info = mlp_training(X_train, y_train, X_test, y_test, X, technique)
+        mlp_info = mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
     print()
     with Status(f"[bold green]Treinando SVM com RBF para {technique}...[/]", spinner="dots"):
-        svm_rbf = svc_rbf_training(X_train, y_train, X_test, y_test, X, technique)
-    # print()
+        svm_rbf = svc_rbf_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
+    print()
     # print("ADABOOST")
     # ada_info = adaboost_training(X_train, y_train, X_test, y_test, X)
 
@@ -76,8 +76,8 @@ for technique in techniques:
     df = pd.DataFrame([mlp_info, svm_rbf])
     # df = df.drop('melhores_parametros')
 
-    print(df)
-    df.to_excel(f'sensor_potencial_hidrico_ai/model/resultados_modelos_{technique}.xlsx')
+    # print(df)
+    # df.to_excel(f'sensor_potencial_hidrico_ai/model/resultados_modelos_{technique}.xlsx')
 
 # Mostrar todos os gráficos
 # plt.show()
