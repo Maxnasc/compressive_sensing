@@ -146,11 +146,13 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
 
     plt.figure(figsize=(14, 12))
     sns.heatmap(
-        cm,
-        annot=True,
-        fmt='d',
+        cm, 
+        annot=True, 
+        fmt='d', 
         cmap='Blues',
         cbar=False,
+        linewidths=.5,
+        linecolor='black',
         xticklabels=label_encoder.classes_,
         yticklabels=label_encoder.classes_
     )

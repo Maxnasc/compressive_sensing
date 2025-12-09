@@ -169,7 +169,9 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique, label_encod
         cmap='Blues',
         cbar=False,
         linewidths=.5,
-        linecolor='black'
+        linecolor='black',
+        xticklabels=label_encoder.classes_,
+        yticklabels=label_encoder.classes_
     )
     plt.title("Matriz de Confusão (SVC RBF) - Classificação 17 Classes")
     plt.ylabel("Classe Verdadeira")
