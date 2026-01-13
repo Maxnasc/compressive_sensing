@@ -142,6 +142,29 @@ def try_load_Phi_or_mask(data_dir=DATA_DIR):
     print("[load] não foi encontrado Phi/mask/meas_idx no diretório")
     return None
 
+def plot_comparison(x_original, meas_idx, y_samples, x_reconstructed, method_name):
+    """
+    Plota o sinal original, os pontos amostrados e o sinal reconstruído.
+    """
+    plt.figure(figsize=(12, 6))
+    
+    # 1. Sinal Original (como referência de fundo)
+    plt.plot(x_original, label='Sinal Original', color='gray', alpha=0.4, linestyle='--')
+    
+    # 2. Sinal Reconstruído
+    plt.plot(x_reconstructed, label=f'Reconstruído ({method_name})', color='blue', linewidth=1.5)
+    
+    # 3. Pontos Amostrados (Amostragem Aleatória)
+    # meas_idx contém as posições e y_samples os valores capturados
+    plt.scatter(meas_idx, y_samples, color='red', s=20, label='Amostras Aleatórias (y)', zorder=5)
+    
+    plt.title(f"Sensing Comprimido: Original vs Reconstruído ({method_name})")
+    plt.xlabel("Amostras (n)")
+    plt.ylabel("Amplitude")
+    plt.legend(loc='upper right')
+    plt.grid(True, which='both', linestyle='--', alpha=0.5)
+    plt.tight_layout()
+    plt.show()
 
 # ----------------------------
 # CONSTRUIR DICIONÁRIO WAVELET (matriz) E FORMATO DE BANDAS
@@ -572,4 +595,17 @@ def pipeline_full():
 # Execução
 if __name__ == "__main__":
     out = pipeline_full()
+    
+    # Extraindo dados para o plot
+    # Como o pipeline processa o X_matrix[0, :], precisamos pegá-lo novamente ou alterar o retorno
+    # Para facilitar, vamos carregar do que foi salvo pelo próprio pipeline:
+    x_orig = np.load(SAVE_PREFIX + "_x_original.npy")[0, :] # Pega a primeira linha usada
+    meas_idx = np.load(SAVE_PREFIX + "_meas_idx.npy")
+    y_samples = np.load(SAVE_PREFIX + "_y.npy")
+    x_rec = out['chosen_res']['x_refined']
+    method = out['chosen_method']
+
+    # Chamada da função de plot
+    plot_comparison(x_orig, meas_idx, y_samples, x_rec, method)
+    
     print("Pipeline finalizado.")

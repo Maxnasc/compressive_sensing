@@ -17,13 +17,14 @@ classes = signal_data["target"].unique()
 num_classes = len(classes)
 
 # Define o layout da grade (ex: 3 colunas, número de linhas calculado)
-ncols = 3
-nrows = int(np.ceil(num_classes / ncols))
+ncols = 3 # Alterado par a versão reduzida com 3 imagens
+# nrows = int(np.ceil(num_classes / ncols))
+nrows = 1
 
 # --- Criação e Plotagem dos Subgráficos ---
 
 # 2. Cria a figura e a grade de eixos
-fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(14, nrows * 4))
+fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(20, nrows * 4))
 # fig.suptitle(
 #     "Exemplo de Distúrbios por Classe (Uma Amostra por Classe)", fontsize=16
 # )
@@ -54,13 +55,16 @@ for ax, class_name in zip(axs.flatten(), classes):
 num_plots_made = len(classes)
 num_total_axes = nrows * ncols
 
-for i in range(num_plots_made, num_total_axes):
+# for i in range(num_plots_made, num_total_axes):
+#     fig.delaxes(axs.flatten()[i])
+
+for i in range(3, num_total_axes):
     fig.delaxes(axs.flatten()[i])
 
 # 4. Ajuste e Exibição
 plt.tight_layout(rect=[0, 0.03, 1, 0.95]) # Ajusta layout, deixando espaço para suptitle
 
 # Salvando a figura (descomente para usar)
-plt.savefig(f'{plots_path}/exemplo_disturbios.png', bbox_inches='tight')
+plt.savefig(f'{plots_path}/exemplo_disturbios_3.png', bbox_inches='tight')
 
 plt.show()
