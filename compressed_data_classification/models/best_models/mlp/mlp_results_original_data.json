@@ -1,1 +1,22 @@
-{"melhores_parametros": {"mlp__activation": "relu", "mlp__alpha": 0.01, "mlp__early_stopping": true, "mlp__hidden_layer_sizes": [20, 10], "mlp__learning_rate": "constant", "mlp__learning_rate_init": 0.001, "mlp__max_iter": 5000, "mlp__solver": "adam"}, "acuracia": 0.5494, "roc_auc_score": 0.9448, "mse": 28.1547, "relatorio_classificacao": "              precision    recall  f1-score   support\n\n           0       0.75      0.95      0.84        99\n           1       0.22      0.19      0.20       104\n           2       0.35      0.38      0.37       112\n           3       0.53      0.98      0.68        86\n           4       0.28      0.31      0.29        88\n           5       0.31      0.53      0.39        98\n           6       0.87      0.96      0.92       101\n           7       0.39      0.41      0.40        94\n           8       0.51      0.18      0.27        99\n           9       0.95      1.00      0.97       105\n          10       0.93      0.91      0.92       121\n          11       0.40      0.19      0.26        99\n          12       0.29      0.30      0.30        94\n          13       0.92      0.99      0.96        97\n          14       0.23      0.11      0.15       102\n          15       0.16      0.03      0.05        91\n          16       0.60      0.80      0.69       110\n\n    accuracy                           0.55      1700\n   macro avg       0.51      0.54      0.51      1700\nweighted avg       0.52      0.55      0.52      1700\n", "n_combinations": 144}
+{
+    "melhores_parametros": {
+        "mlp__activation": "relu",
+        "mlp__alpha": 0.01,
+        "mlp__early_stopping": true,
+        "mlp__hidden_layer_sizes": [
+            20,
+            10
+        ],
+        "mlp__learning_rate": "constant",
+        "mlp__learning_rate_init": 0.001,
+        "mlp__max_iter": 5000,
+        "mlp__solver": "adam"
+    },
+    "acuracia": 0.5382,
+    "roc_auc_score": 0.9436,
+    "mse": 28.9465,
+    "relatorio_classificacao": "              precision    recall  f1-score   support\n\n           0       0.69      0.97      0.80        99\n           1       0.24      0.18      0.21       104\n           2       0.34      0.40      0.37       112\n           3       0.54      0.92      0.68        86\n           4       0.28      0.64      0.39        88\n           5       0.27      0.48      0.34        98\n           6       0.89      0.97      0.93       101\n           7       0.39      0.49      0.43        94\n           8       0.33      0.14      0.20        99\n           9       0.94      1.00      0.97       105\n          10       0.95      0.92      0.93       121\n          11       0.30      0.07      0.11        99\n          12       0.29      0.09      0.13        94\n          13       0.90      0.99      0.94        97\n          14       0.12      0.03      0.05       102\n          15       0.29      0.07      0.11        91\n          16       0.64      0.72      0.68       110\n\n    accuracy                           0.54      1700\n   macro avg       0.49      0.53      0.49      1700\nweighted avg       0.50      0.54      0.50      1700\n",
+    "n_combinations": 144,
+    "best_mean_score": 0.942,
+    "std_best_score_k_fold": 0.0026
+}

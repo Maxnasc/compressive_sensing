@@ -186,15 +186,18 @@ def finalize_and_save(X_matrix, config, N):
     # Métricas Finais do sinal específico
     metrics = {
         "mse_refined": mse(sinal_original, x_refined),
-        "psnr_refined": psnr(sinal_original, x_refined),
-        "cc_refined": correlation_coefficient(sinal_original, x_refined)
+        "psnr_refined": float(psnr(sinal_original, x_refined)),
+        "cc_refined": float(correlation_coefficient(sinal_original, x_refined))
     }
 
     # Salvar outputs
     summary = {
-        "config_parameters": {k: str(v) for k, v in config.items()},
+        "config_parameters": {k: v for k, v in config.items()},
         "performance_on_selected_signal": metrics
     }
+
+    with open('compressed_data_classification/best_parameters.json', 'w') as f:
+        json.dump(summary, f)
     
     print(f"✅ Resultados salvos com sucesso em {DATA_DIR}")
     return sinal_original, x_refined, m_idx, y, metrics

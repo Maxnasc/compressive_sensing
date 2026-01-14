@@ -94,8 +94,9 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
     # Carregando o modelo
 
     # Resultados
-    # best_model = grid_search.best_estimator_
-    best_model = joblib.load(f"compressed_data_classification/models/best_models/mlp/mlp_model_{technique}.pkl")
+    best_model = grid_search.best_estimator_
+    best_index = grid_search.best_index_
+    # best_model = joblib.load(f"compressed_data_classification/models/best_models/mlp/mlp_model_{technique}.pkl")
     print("\nMelhores hiperparâmetros encontrados:")
     print(grid_search.best_params_)
 
@@ -110,6 +111,8 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
     roc_score = roc_auc_score(y_test, y_pred_proba, multi_class='ovr')
     accuracy = accuracy_score(y_test, y_pred)
     report = classification_report(y_test, y_pred, zero_division=0)
+    std_test_score = grid_search.cv_results_['std_test_score'][best_index]
+    mean_test_score = grid_search.best_score_
 
     print(f"\nDesempenho no conjunto de teste:")
     print(f"MSE: {mse:.4f}")
@@ -123,6 +126,8 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
         "mse": round(mse, 4),
         "relatorio_classificacao": report, # Pode ser útil salvar o relatório completo
         "n_combinations": total_combinations,
+        "best_mean_score": round(mean_test_score, 4),
+        "std_best_score_k_fold": round(std_test_score, 4)
         # "mean_emission": round((emissions / total_combinations), 4) if total_combinations > 0 and total_combinations != None else 0,
     }
 
