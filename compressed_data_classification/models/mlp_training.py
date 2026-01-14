@@ -100,7 +100,7 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
     print(grid_search.best_params_)
 
     # Salvar o modelo ajustado
-    # joblib.dump(best_model, f"compressed_data_classification/models/best_models/mlp/mlp_model_{technique}.pkl")
+    joblib.dump(best_model, f"compressed_data_classification/models/best_models/mlp/mlp_model_{technique}.pkl")
     # joblib.dump(best_model, f"compressed_data_classification/models/mlp/mlp_model_{technique}.pkl")
 
     # Avaliação no conjunto de teste

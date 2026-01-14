@@ -1,0 +1,18 @@
+{
+  "config_parameters": {
+    "SAMPLE_M": "60",
+    "WAVELET": "db8",
+    "WAVELET_LEVEL": "4",
+    "METHOD": "LASSO",
+    "PARAM_VAL": "0.0001",
+    "avg_psnr": "30.364061440359002",
+    "avg_cc": "0.9971360524434084",
+    "best_signal_idx": "11944",
+    "best_signal_cc": "0.9997833939037509"
+  },
+  "performance_on_selected_signal": {
+    "mse_refined": 7.749524204976646e-05,
+    "psnr_refined": 41.10724960912578,
+    "cc_refined": 0.9999286669833664
+  }
+}
