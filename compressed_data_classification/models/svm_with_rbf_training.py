@@ -92,8 +92,8 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique, label_encod
     # Usando 'accuracy' como métrica principal para classificação multiclasse
     grid_search = GridSearchCV(
         estimator=pipeline,
-        param_grid=best_param_grid,
-        cv=5,
+        param_grid=param_grid,
+        cv=10,
         scoring="roc_auc_ovr", # <-- Alteração: Usando métrica de classificação
         n_jobs=-1,
         verbose=1,
@@ -116,7 +116,7 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique, label_encod
     print(grid_search.best_params_)
 
     # Salvar o modelo ajustado
-    # joblib.dump(best_model, model_path)
+    joblib.dump(best_model, model_path)
 
     # Avaliação no conjunto de teste
     y_pred = best_model.predict(X_test)
@@ -147,11 +147,11 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique, label_encod
     # Garantir que o diretório de plots exista
     Path(scatter_plot_path).parent.mkdir(parents=True, exist_ok=True)
     
-    # with open(results_path, "w") as f:
-    #     json.dump(doc, f, indent=4)
+    with open(results_path, "w") as f:
+        json.dump(doc, f, indent=4)
 
-    # with open(report_result_path, "w") as f:
-    #     json.dump(report, f, indent=4)
+    with open(report_result_path, "w") as f:
+        json.dump(report, f, indent=4)
 
     # --- Plot: Matriz de Confusão para 17 Classes ---
     # (Substitui os plots de regressão)

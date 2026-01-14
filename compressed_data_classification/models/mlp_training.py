@@ -75,8 +75,8 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
     # GridSearch com validação cruzada
     grid_search = GridSearchCV(
         estimator=pipeline,
-        param_grid=best_param_grid,
-        cv=5,
+        param_grid=param_grid,
+        cv=10,
         scoring="roc_auc_ovr", # <-- Alteração: Usando métrica de classificação
         n_jobs=-1,
         verbose=1,
@@ -126,11 +126,11 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
         # "mean_emission": round((emissions / total_combinations), 4) if total_combinations > 0 and total_combinations != None else 0,
     }
 
-    # with open(f"compressed_data_classification/models/best_models/mlp/mlp_results_{technique}.json", "w") as f:
-    #     json.dump(doc, f)
+    with open(f"compressed_data_classification/models/best_models/mlp/mlp_results_{technique}.json", "w") as f:
+        json.dump(doc, f)
 
-    # with open(f"compressed_data_classification/models/best_models/mlp/mlp_report_result_{technique}.json", "w") as f:
-    #     json.dump(report, f, indent=4)
+    with open(f"compressed_data_classification/models/best_models/mlp/mlp_report_result_{technique}.json", "w") as f:
+        json.dump(report, f, indent=4)
         
     # --- Plot: Matriz de Confusão para 17 Classes ---
     # (Substitui os plots de regressão)
