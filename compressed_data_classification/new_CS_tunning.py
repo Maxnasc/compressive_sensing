@@ -160,7 +160,7 @@ def grid_search_robust(X_matrix, N):
                     'best_signal_cc': local_best_cc
                 })
                 
-    return pd.DataFrame(all_results).sort_values(by='avg_cc', ascending=False).reset_index(drop=True)
+    return pd.DataFrame(all_results).sort_values(by='avg_psnr', ascending=False).reset_index(drop=True)
 
 # ----------------------------
 # 5. SALVAMENTO E REFINAMENTO
@@ -195,15 +195,6 @@ def finalize_and_save(X_matrix, config, N):
         "config_parameters": {k: str(v) for k, v in config.items()},
         "performance_on_selected_signal": metrics
     }
-    
-    # with open(SAVE_PREFIX + "_summary.json", "w") as f:
-    #     json.dump(summary, f, indent=2)
-        
-    # np.save(SAVE_PREFIX + "_x_original.npy", sinal_original)
-    # np.save(SAVE_PREFIX + "_meas_idx.npy", m_idx)
-    # np.save(SAVE_PREFIX + "_Phi.npy", Phi)
-    # np.save(SAVE_PREFIX + "_y.npy", y)
-    # np.save(SAVE_PREFIX + "_x_rec_refined.npy", x_refined)
     
     print(f"✅ Resultados salvos com sucesso em {DATA_DIR}")
     return sinal_original, x_refined, m_idx, y, metrics
@@ -244,7 +235,7 @@ if __name__ == "__main__":
     plt.plot(s_ref, label='Signal Reconstructed', color='blue', lw=1.5)
     plt.scatter(m_idx, y_val, color='red', s=40, label='Samples', zorder=5)
     
-    plt.title(f"Final Result: {chosen_config['METHOD']} | CC: {final_m['cc_refined']:.4f} | PSNR: {final_m['psnr_refined']:.2f}dB")
+    plt.title(f"Sampled and reconstructed signal")
     plt.xlabel("Samples (n)")
     plt.ylabel("Amplitude")
     plt.legend()

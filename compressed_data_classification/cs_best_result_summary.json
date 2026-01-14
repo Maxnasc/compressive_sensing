@@ -4,15 +4,15 @@
     "WAVELET": "db8",
     "WAVELET_LEVEL": "4",
     "METHOD": "LASSO",
-    "PARAM_VAL": "0.0001",
-    "avg_psnr": "30.364061440359002",
-    "avg_cc": "0.9971360524434084",
-    "best_signal_idx": "11944",
-    "best_signal_cc": "0.9997833939037509"
+    "PARAM_VAL": "0.001",
+    "avg_psnr": "27.994627482291556",
+    "avg_cc": "0.9975486874634036",
+    "best_signal_idx": "14309",
+    "best_signal_cc": "0.9998014878893291"
   },
   "performance_on_selected_signal": {
-    "mse_refined": 7.749524204976646e-05,
-    "psnr_refined": 41.10724960912578,
-    "cc_refined": 0.9999286669833664
+    "mse_refined": 0.0007610175576580408,
+    "psnr_refined": 31.601613014635536,
+    "cc_refined": 0.9996710826763472
   }
 }
