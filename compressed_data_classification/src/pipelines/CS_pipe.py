@@ -24,11 +24,16 @@ from sklearn.model_selection import cross_val_score
 # ----------------------------
 # CONFIG (ajuste estes parâmetros)
 # ----------------------------
-DATA_DIR = "compressed_data_classification/cs_metrics"  # onde procurar sinal e salvar resultados
-SAMPLE_M = 40  # número de amostras M se não houver Phi/mask
-RANDOM_SEED = 42
-WAVELET = "db8"  # wavelet para parte wavelet
-WAVELET_LEVEL = 4  # nível de decomposição (tente 1..4)
+DATA_DIR = "compressed_data_classification/src/cs/cs_constants"  # onde procurar sinal e salvar resultados
+
+# Importando os dados de configuração do Lasso
+with open('compressed_data_classification/src/cs/results/metrics/metricsbest_cs_tune_metrics.json', 'r') as f:
+    cs_params = json.load(f)
+    
+cs_conf_params = cs_params.get('config_parameters')
+SAMPLE_M = cs_conf_params.get('SAMPLE_M')  # número de amostras M se não houver Phi/mask
+WAVELET = cs_conf_params.get('WAVELET')  # wavelet para parte wavelet
+WAVELET_LEVEL = cs_conf_params.get('WAVELET_LEVEL')  # nível de decomposição (tente 1..4)
 METHODS = ["LASSO"]  # quais métodos testar
 OMP_candidates = [
     10,
@@ -37,9 +42,11 @@ OMP_candidates = [
     50,
     60,
 ]  # valores de n_nonzero_coefs para testar (ajuste conforme k90)
-LASSO_alphas = [1e-4]  # alphas para Lasso
+LASSO_alphas = cs_conf_params.get('PARAM_VAL')  # alphas para Lasso
 REFINE_SPIKE_THRESHOLD_K = 4.5  # k para MAD threshold de picos
 SAVE_PREFIX = os.path.join(DATA_DIR, "cs_result")  # prefixo para salvar outputs
+
+RANDOM_SEED = 42
 # ----------------------------
 
 np.random.seed(RANDOM_SEED)
@@ -496,225 +503,6 @@ def pipeline_full():
                     ("pca alpha", A_pca)]:
         mean, std = quick_eval(X, y_labels[:num])
         print(f"{name}: acc={mean:.3f} ± {std:.3f}")
-    
-    
-    # ##########################################################################
-    # # SALVANDO AS AMOSTRAS COMPRIMIDAS PARA TREINAMENTO DO modelo de linguagem
-    # ##########################################################################
-    
-    # data_compressed = pd.DataFrame(y_cs_matrix)
-    # data_compressed.columns = [f'm_{i+1}' for i in range(y_cs_matrix.shape[1])]
-    # data_compressed['target'] = y_labels
-    # output_file_name = 'compressed_data_classification/seed_data_compressed_M40_db8.csv'
-    # data_compressed.to_csv(output_file_name, index=False)
-    # print(f"\n[SAVE] Dataset comprimido salvo em: {output_file_name}")
-    # np.save("compressed_data_classification/Phi_final_M40.npy", Phi)
-    
-    # ##########################################################################
-    
-    # # Para fins de medição das métricas é preciso aplica-las somente à um sinal
-    # sinal_to_reconstruct = X_matrix[0,:] # Primeira linha do df
-    # y = y_cs_matrix[0,:] # <- Sinal amostrado aqui
-    # # y = sinal  # <- Considerando o sinal original como sendo o amostrado
-    
-    # print(
-    #     f"[info] A shape = {A.shape}, A_norm shape = {A_norm.shape}, y shape = {y.shape}"
-    # )
-
-    # results = {}
-
-    # # Sweep OMP candidates
-    # if "OMP" in METHODS:
-    #     results["OMP"] = []
-    #     for S in OMP_candidates:
-    #         if S <= 0 or S > A_norm.shape[1]:
-    #             continue
-    #         try:
-    #             coef_norm = solve_omp(A_norm, y, S)
-    #             coef = coef_norm / col_norms
-    #             x_direct, x_waverec, alpha_I, alpha_wave = alpha_to_reconstruction(
-    #                 coef, N, K, Psi_wave, shapes, wavelet_name=WAVELET
-    #             )
-    #             m = mse(sinal_to_reconstruct, x_direct)
-    #             p = psnr(sinal_to_reconstruct, x_direct)
-    #             cc = correlation_coefficient(sinal_to_reconstruct, x_direct)
-    #             results["OMP"].append(
-    #                 {
-    #                     "S": S,
-    #                     "mse": m,
-    #                     "psnr": p,
-    #                     "cc": cc,
-    #                     "coef": coef,
-    #                     "x_direct": x_direct,
-    #                     "x_waverec": x_waverec,
-    #                 }
-    #             )
-    #             print(f"[OMP] S={S} MSE={m:.4e} PSNR={p:.4e} CC={cc:.4e}")
-    #         except Exception as e:
-    #             print(f"[OMP] erro S={S} -> {e}")
-
-    # # Sweep Lasso alphas
-    # if "LASSO" in METHODS:
-    #     results["LASSO"] = []
-    #     for a in LASSO_alphas:
-    #         try:
-    #             coef_norm = solve_lasso(A_norm, y, alpha=a)
-    #             coef = coef_norm / col_norms
-    #             x_direct, x_waverec, alpha_I, alpha_wave = alpha_to_reconstruction(
-    #                 coef, N, K, Psi_wave, shapes, wavelet_name=WAVELET
-    #             )
-    #             m = mse(sinal_to_reconstruct, x_direct)
-    #             p = psnr(sinal_to_reconstruct, x_direct)
-    #             cc = correlation_coefficient(sinal_to_reconstruct, x_direct)
-    #             results["LASSO"].append(
-    #                 {
-    #                     "alpha": a,
-    #                     "mse": m,
-    #                     "psnr": p,
-    #                     "cc": cc,
-    #                     "coef": coef,
-    #                     "x_direct": x_direct,
-    #                     "x_waverec": x_waverec,
-    #                 }
-    #             )
-    #             print(f"[LASSO] alpha={a} MSE={m:.4e} PSNR={p:.4e} CC={cc:.4e}")
-    #         except Exception as e:
-    #             print(f"[LASSO] erro alpha={a} -> {e}")
- 
-    # # Escolher o melhor resultado de cada família para posterior refinamento
-    # best = {}
-    # if results.get("OMP"):
-    #     best["OMP"] = min(results["OMP"], key=lambda r: r["mse"])
-    #     print(f"[best OMP] S={best['OMP']['S']} MSE={best['OMP']['mse']:.4e}")
-    # if results.get("LASSO"):
-    #     best["LASSO"] = min(results["LASSO"], key=lambda r: r["mse"])
-    #     print(
-    #         f"[best LASSO] alpha={best['LASSO']['alpha']} MSE={best['LASSO']['mse']:.4e}"
-    #     )
-
-    # # Refinamento de picos no melhor método (escolhe por MSE)
-    # chosen_method = None
-    # chosen_res = None
-    # cand_methods = [(k, (v if isinstance(v, dict) else v)) for k, v in best.items()]
-    # if best:
-    #     # decide por menor MSE entre OMP e LASSO
-    #     mm = []
-    #     for k in best:
-    #         val = best[k]
-    #         mm.append((k, val["mse"]))
-    #     chosen_method = min(mm, key=lambda t: t[1])[0]
-    #     chosen_res = best[chosen_method]
-    #     print(
-    #         f"[choose] escolhendo {chosen_method} para refinamento (MSE {chosen_res['mse']:.4e})"
-    #     )
-    # else:
-    #     print("[warn] nenhum resultado gerado (talvez parâmetros inválidos)")
-    #     return results
-    
-    # # -----------------------------------------------------
-    # # SALVAR COEFICIENTES ALPHA (coeficientes da reconstrução)
-    # # -----------------------------------------------------
-    # coef = chosen_res["coef"]  # Vetor alpha_full (N + K)
-    # plot_alpha(coef, N)
-    # plot_sparsity_pattern(coef)
-    # plot_alpha_split(coef, N)
-    # plot_alpha_hist(coef)
-
-    # # Se quiser separar alfa identidade e alfa wavelet:
-    # alpha_I = coef[:N]
-    # alpha_wave = coef[N:]
-
-    # df_alpha = pd.DataFrame({
-    #     "coef_index": np.arange(len(coef)),
-    #     "alpha_value": coef
-    # })
-
-    # # Criar diretório se não existir
-    # Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
-
-    # alpha_output = os.path.join(DATA_DIR, "alpha_coefficients.csv")
-    # df_alpha.to_csv(alpha_output, index=False)
-
-    # print(f"[SAVE] Coeficientes alpha salvos em: {alpha_output}")
-    # # -----------------------------------------------------
-
-    # # detect spikes em reconstrução direta e refinar amplitudes
-    # x_direct = chosen_res["x_direct"]
-    # spike_idx, med, sigma = detect_spikes_mad(x_direct)
-    # print(f"[spikes] detectados {spike_idx.size} picos (k={REFINE_SPIKE_THRESHOLD_K})")
-
-    # if spike_idx.size > 0:
-    #     a_ref = refine_spikes_by_LS(Phi, meas_idx, y, spike_idx)
-    #     # aplicar ajustes no x_direct
-    #     x_refined = x_direct.copy()
-    #     # colocar amplitudes refinadas nos índices dos picos
-    #     for j, sidx in enumerate(spike_idx):
-    #         x_refined[sidx] = a_ref[j]
-    #     chosen_res["x_refined"] = x_refined
-    #     print("[refine] amplitudes refinadas aplicadas")
-    # else:
-    #     chosen_res["x_refined"] = x_direct.copy()
-    #     print("[refine] sem picos para refinar")
-
-    # # Gerando sinais interpolados
-    # chosen_res["x_direct_interpolated"] = intepolate((chosen_res["x_direct"]))
-    # chosen_res["x_refined_interpolated"] = intepolate((chosen_res["x_refined"]))
-
-    # # -----------------------------------------------------
-    # # CÁLCULO DE MÉTRICAS PARA SINAL REFINADO (adicione aqui)
-    # # -----------------------------------------------------
-    # x_refined = chosen_res["x_refined"]
-    # chosen_res["mse_refined"] = mse(sinal_to_reconstruct, x_refined)
-    # chosen_res["psnr_refined"] = psnr(sinal_to_reconstruct, x_refined)
-    # chosen_res["cc_refined"] = correlation_coefficient(sinal_to_reconstruct, x_refined)
-
-    # print(
-    #     f"\n[Métricas Refinadas] MSE: {chosen_res['mse_refined']:.4e}, PSNR: {chosen_res['psnr_refined']:.2f} dB, CC: {chosen_res['cc_refined']:.4f}"
-    # )
-    # # -----------------------------------------------------
-
-    # # Salvar resultados principais (atualizar 'best' e 'to_save')
-    # out_json = SAVE_PREFIX + "_summary.json"
-    # to_save = {
-    #     "N": N,
-    #     "M": len(meas_idx),
-    #     "wavelet": WAVELET,
-    #     "wavelet_level": WAVELET_LEVEL,
-    #     "best": {
-    #         k: {
-    #             "mse": float(best[k]["mse"]),
-    #             "psnr": float(best[k]["psnr"]),  # <--- NOVA
-    #             "cc": float(best[k]["cc"]),  # <--- NOVA
-    #             "param": best[k].get("S", best[k].get("alpha")),
-    #         }
-    #         for k in best
-    #     },
-    #     "refined_metrics": {  # <--- NOVO BLOCO
-    #         "mse": float(chosen_res["mse_refined"]),
-    #         "psnr": float(chosen_res["psnr_refined"]),
-    #         "cc": float(chosen_res["cc_refined"]),
-    #     },
-    # }
-
-    # with open(out_json, "w") as f:
-    #     json.dump(to_save, f, indent=2)
-    # np.save(SAVE_PREFIX + "_x_original.npy", sinal)
-    # np.save(SAVE_PREFIX + "_meas_idx.npy", meas_idx)
-    # np.save(SAVE_PREFIX + "_Phi.npy", Phi)
-    # np.save(SAVE_PREFIX + "_y.npy", y)
-    # np.save(SAVE_PREFIX + "_x_rec_best.npy", chosen_res["x_direct"])
-    # np.save(SAVE_PREFIX + "_x_rec_refined.npy", chosen_res["x_refined"])
-    # print(f"[save] resultados salvos com prefixo {SAVE_PREFIX}_*")
-
-    # # Plots removidos
-
-    # return {
-    #     "results": results,
-    #     "best": best,
-    #     "chosen_method": chosen_method,
-    #     "chosen_res": chosen_res,
-    # }
-
 
 # Execução
 if __name__ == "__main__":
