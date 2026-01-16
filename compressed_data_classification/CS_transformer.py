@@ -216,7 +216,7 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
     ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
         """
         Extrai e retorna (X_features, alphas_optional)
-        technique: "energy", "topk", "pca", "pure_alpha"
+        technique: "energy", "topk", "pca", "pure_alpha", "RM"
         """
         if self.A_norm is None or self.col_norms is None:
             raise ValueError(
@@ -226,17 +226,17 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         if (
             self.technique == "random_mesurements"
         ):  # Usa o vetor de medidas aleatório antes da otimização
-            if self._is_mask(self.Phi):
-                # Phi é mask booleana (N,)
-                return X[:, self.Phi], []
+            # if self._is_mask(self.Phi):
+            #     # Phi é mask booleana (N,)
+            #     return X[:, self.Phi], []
 
-            elif self._is_index_array(self.Phi):
-                # Phi são índices (M,)
-                return X[:, self.Phi], []
+            # elif self._is_index_array(self.Phi):
+            #     # Phi são índices (M,)
+            #     return X[:, self.Phi], []
 
-            elif isinstance(self.Phi, np.ndarray) and self.Phi.ndim == 2:
+            # elif isinstance(self.Phi, np.ndarray) and self.Phi.ndim == 2:
                 # Phi é matriz M×N
-                return X.dot(self.Phi.T), []
+            return X.dot(self.Phi.T), []
 
         # compute alphas (em memória)
         alphas = self.compute_alphas(X, alpha_lasso=alpha_lasso)

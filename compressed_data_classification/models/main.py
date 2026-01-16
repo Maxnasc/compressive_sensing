@@ -19,6 +19,7 @@ from rich.status import Status
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))) 
 # Note o '..', '..' acima
 
+from compressed_data_classification.CS_transformer import CompressiveSensingTransformer
 from mlp_training import mlp_training
 from svm_with_rbf_training import svc_rbf_training
 # from adaboost.adaboost_training import adaboost_training
@@ -49,8 +50,14 @@ techniques = ['random_mesurements', 'original_data']
 # Console para exibir status
 console = Console()
 
+
 # Treinar usando os diferentes métodos de treinamento e salvar cada um
 for technique in techniques:
+        
+    # Converter o X_test antes de testar
+    # cs_transformer = CompressiveSensingTransformer(technique=technique, verbose=True)
+    # X_test_compressed = X_test.apply(lambda row: cs_transformer.extract_features(row.values)[0], axis=1, result_type='expand')
+
     # Modelos
     # print()
     # print("RIDGE REGRESSOR")
@@ -77,7 +84,7 @@ for technique in techniques:
     # df = df.drop('melhores_parametros')
 
     # print(df)
-    # df.to_excel(f'sensor_potencial_hidrico_ai/model/resultados_modelos_{technique}.xlsx')
+    df.to_excel(f'sensor_potencial_hidrico_ai/model/resultados_modelos_{technique}.xlsx')
 
 # Mostrar todos os gráficos
 # plt.show()
