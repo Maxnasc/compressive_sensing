@@ -123,7 +123,7 @@ def run_reconstruction(sinal_orig, config, N):
     coef = model.coef_ / col_norms
     x_rec = (np.eye(N).dot(coef[:N])) + (Psi_w.dot(coef[N:]))
 
-    return x_rec, Phi, meas_idx, y
+    return x_rec, Phi, meas_idx, y, Psi_w, A_norm, col_norms
 
 
 # ----------------------------
@@ -158,7 +158,7 @@ def grid_search_robust(X_matrix, N):
 
             for idx_sig, sinal in zip(test_indices, sinais_teste):
                 try:
-                    xr, _, _, _ = run_reconstruction(sinal, c_current, N)
+                    xr, _, _, _, _, _, _ = run_reconstruction(sinal, c_current, N)
                     cur_psnr = psnr(sinal, xr)
                     cur_cc = correlation_coefficient(sinal, xr)
 
@@ -206,7 +206,7 @@ def finalize_and_save(X_matrix, config, N):
     )
 
     # Reconstrução direta
-    x_dir, Phi, m_idx, y = run_reconstruction(sinal_original, config, N)
+    x_dir, Phi, m_idx, y, Psi_w, A_norm, col_norms = run_reconstruction(sinal_original, config, N)
 
     # Refinamento de picos (MAD + LS)
     spike_idx = detect_spikes_mad(x_dir)
@@ -225,18 +225,14 @@ def finalize_and_save(X_matrix, config, N):
     }
 
     # Estrutura JSON final
+    config_parameters = {k: v for k, v in config.items()}
+    config_parameters['N'] = N
     to_save = {
-        "config_parameters": {k: v for k, v in config.items()},
+        "config_parameters": config_parameters,
         "performance_on_selected_signal": metrics,
     }
 
-    # Prefixos e paths
-    SAVE_METRICS_PREFIX = (
-        "compressed_data_classification/src/cs/results/metrics"
-        "metricsbest_cs_tune_metrics"
-    )
-
-    out_json = SAVE_METRICS_PREFIX + "_metrics.json"
+    out_json = "compressed_data_classification/src/cs/results/metrics/metricsbest_cs_tune_metrics.json"
 
     # -------- SALVAMENTO INTEGRADO --------
     with open(out_json, "w") as f:
@@ -245,6 +241,9 @@ def finalize_and_save(X_matrix, config, N):
     np.save(SAVE_PREFIX + "_x_original.npy", sinal_original)
     np.save(SAVE_PREFIX + "_meas_idx.npy", m_idx)
     np.save(SAVE_PREFIX + "_Phi.npy", Phi)
+    np.save(SAVE_PREFIX + "_Psi_w.npy", Psi_w)
+    np.save(SAVE_PREFIX + "_A_norm.npy", A_norm)
+    np.save(SAVE_PREFIX + "_col_norms.npy", col_norms)
     np.save(SAVE_PREFIX + "_y.npy", y)
     np.save(SAVE_PREFIX + "_x_rec_best.npy", x_dir)
     np.save(SAVE_PREFIX + "_x_rec_refined.npy", x_refined)

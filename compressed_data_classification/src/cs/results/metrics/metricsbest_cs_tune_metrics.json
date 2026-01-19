@@ -1,18 +1,19 @@
 {
   "config_parameters": {
     "SAMPLE_M": 50,
-    "WAVELET": "db8",
+    "WAVELET": "sym4",
     "WAVELET_LEVEL": 4,
     "METHOD": "LASSO",
     "PARAM_VAL": 0.0001,
-    "avg_psnr": 30.174947520743494,
-    "avg_cc": 0.9127433092729478,
-    "best_signal_idx": 14352,
-    "best_signal_cc": 0.9999964731586699
+    "avg_psnr": 22.923251799493066,
+    "avg_cc": 0.9722886543381074,
+    "best_signal_idx": 2236,
+    "best_signal_cc": 0.9989814082028248,
+    "N": 100
   },
   "performance_on_selected_signal": {
-    "mse_refined": 7.3406006610134156e-06,
-    "psnr_refined": 51.69975059813807,
-    "cc_refined": 0.9999966914935212
+    "mse_refined": 5.857718234687949e-05,
+    "psnr_refined": 41.63256844523552,
+    "cc_refined": 0.999805562133315
   }
 }

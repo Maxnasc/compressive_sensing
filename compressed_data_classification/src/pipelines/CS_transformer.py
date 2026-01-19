@@ -1,6 +1,7 @@
 # CS_transformer_fixed.py
 import os
 import pickle
+import json
 from typing import Optional, Tuple, List, Union
 
 import numpy as np
@@ -11,6 +12,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.linear_model import Lasso
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
+from sklearn.linear_model import OrthogonalMatchingPursuit, Lasso
 
 
 class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
@@ -24,7 +26,8 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
     def __init__(
         self,
         technique: str = "energy",
-        cs_structures_path: str = "compressed_data_classification/cs_constants/cs_constants.pkl",
+        cs_structures_path: str = "compressed_data_classification/src/cs/cs_constants",
+        cs_metrics_path: str = "compressed_data_classification/src/cs/results/metrics/metricsbest_cs_tune_metrics.json",
         lasso_alpha: float = 1e-4,
         K_topk: int = 40,
         pca_components: int = 40,
@@ -32,6 +35,7 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         verbose: bool = False,
     ):
         self.cs_structures_path = cs_structures_path
+        self.cs_metrics_path = cs_metrics_path
         self.lasso_alpha = lasso_alpha
         self.K_topk = K_topk
         self.pca_components = pca_components
@@ -44,6 +48,7 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         # placeholders (populados por load_cs_structures ou manualmente)
         self.Phi = None
         self.Psi_concat = None  # opcional (pode ser salvo)
+        self.Psi_wave = None
         self.A_norm = None
         self.col_norms = None
         self.N = None
@@ -93,12 +98,17 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         """Carrega estruturas salvas anteriormente."""
         if path is None:
             path = self.cs_structures_path
+        with open(self.cs_metrics_path, 'r') as f:
+            metrics = json.load(f)
+        
         with open(path, "rb") as f:
             data = pickle.load(f)
-        self.Phi = data.get("Phi")
-        self.A_norm = data.get("A_norm")
-        self.col_norms = data.get("col_norms")
-        self.N = data.get("N")
+        self.Phi = np.load(f'{path}/cs_best_result_Phi.npy')
+        self.Psi_wave = np.load(f'{path}/cs_best_result_Psi_w.npy')
+        self.A_norm = np.load(f'{path}/cs_best_result_A_norm.npy')
+        self.col_norms = np.load(f'{path}/cs_best_result_col_norms.npy')
+        self.N = metrics.get("config_parameters").get("N")
+        self.lasso_alpha = metrics.get("config_parameters").get("PARAM_VAL")
         self.shapes = data.get("shapes")
         self.Psi_concat = data.get("Psi_concat", None)
         if self.verbose:
@@ -204,6 +214,43 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         mean_abs = np.mean(np.abs(alphas), axis=0)
         topk_idx = np.argsort(mean_abs)[-K:]
         return np.sort(topk_idx)  # retorna ordenado (bom para slicing)
+    
+    def reconstruct_from_y(
+        self,
+        y: np.ndarray,
+        method: str = "LASSO",
+    ) -> np.ndarray:
+        """
+        Reconstrói o sinal x a partir do sinal subamostrado y.
+        Replica exatamente o pipeline do cs_tunning.py
+        """
+        if self.A_norm is None or self.col_norms is None:
+            raise ValueError("Estruturas CS não carregadas.")
+
+        # Resolver alpha
+        if method == "OMP":
+            model = OrthogonalMatchingPursuit(
+                n_nonzero_coefs=int(self.lasso_alpha)
+            )
+            model.fit(self.A_norm, y)
+        else:
+            model = Lasso(
+                alpha=self.lasso_alpha,
+                max_iter=10000,
+                fit_intercept=False
+            )
+            model.fit(self.A_norm, y)
+
+        coef = model.coef_ / self.col_norms
+
+        # Reconstrução no domínio do tempo
+        alpha_I = coef[: self.N]
+        alpha_wave = coef[self.N :]
+
+        x_rec = alpha_I + self.Psi_wave.dot(alpha_wave)
+
+        return x_rec
+
 
     # -------------------------
     # export features
@@ -308,9 +355,22 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
                 )
         return self
 
-    def transform(self, X: np.ndarray) -> np.ndarray:
-        features, _ = self.extract_features(X)
-        return features
+    def transform(self, Y: np.ndarray) -> np.ndarray:
+        """
+        Y: matriz de sinais subamostrados (n_samples x M)
+        Retorna sinais reconstruídos (n_samples x N)
+        """
+        X_rec = []
+
+        for i in range(Y.shape[0]):
+            x_hat = self.reconstruct_from_y(
+                Y[i],
+                method=self.method,
+                param_val=self.param_val,
+            )
+            X_rec.append(x_hat)
+
+        return np.vstack(X_rec)
 
     def fit_transform(
         self, X: np.ndarray, y: Optional[np.ndarray] = None
