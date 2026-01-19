@@ -232,7 +232,7 @@ def finalize_and_save(X_matrix, config, N):
         "performance_on_selected_signal": metrics,
     }
 
-    out_json = "compressed_data_classification/src/cs/results/metrics/metricsbest_cs_tune_metrics.json"
+    out_json = "compressed_data_classification/src/cs/results/metrics/best_cs_tune_metrics.json"
 
     # -------- SALVAMENTO INTEGRADO --------
     with open(out_json, "w") as f:
