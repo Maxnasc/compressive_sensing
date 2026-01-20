@@ -19,9 +19,9 @@ from rich.status import Status
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))) 
 # Note o '..', '..' acima
 
-from compressed_data_classification.src.training import mlp_training
-from compressed_data_classification.src.training import svm_with_rbf_training
-from compressed_data_classification.src.training import qsvc_training
+from compressed_data_classification.src.training.mlp_training import mlp_training
+from compressed_data_classification.src.training.svm_with_rbf_training import svm_with_rbf_training
+from compressed_data_classification.src.training.qsvc_training import qsvc_training
 
 def import_and_split_dataset(data_path):
     # Carregue os dados

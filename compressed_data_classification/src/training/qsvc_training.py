@@ -20,7 +20,7 @@ from sklearn.pipeline import Pipeline
 
 # --- A função principal foi renomeada e os parâmetros internos ajustados ---
 
-def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
+def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
     """
     Treina e avalia um classificador SVM com Kernel RBF (SVC) 
     usando Grid Search para um problema de classificação multiclasse.
