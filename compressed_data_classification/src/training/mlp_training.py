@@ -35,7 +35,7 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
     cm_plot_path = f"compressed_data_classification/src/models/best_models_result/mlp/plots/confusion_matrix_{technique}.png"
     
     # Criando o pipeline
-    if technique == 'original_data':
+    if technique in ['original_data', 'random_mesurements']:
         pipeline = Pipeline([
             ('feature_extraction', XPQRSFeatureExtractor()),
             ('mlp', MLPClassifier(random_state=42))

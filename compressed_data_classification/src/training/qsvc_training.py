@@ -46,7 +46,7 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique, label_encod
     # )
     
     # Criando o pipeline
-    if technique == 'original_data':
+    if technique in ['original_data', 'random_mesurements']:
         pipeline = Pipeline([
             ('feature_extraction', XPQRSFeatureExtractor()),
             ('qsvc', SVC(kernel='poly', degree=2))

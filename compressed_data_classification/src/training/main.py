@@ -19,33 +19,34 @@ from rich.status import Status
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))) 
 # Note o '..', '..' acima
 
-from compressed_data_classification_old.CS_transformer import CompressiveSensingTransformer
-from mlp_training import mlp_training
-from svm_with_rbf_training import svc_rbf_training
-# from adaboost.adaboost_training import adaboost_training
-# from catboost.catboost_training import catboost_training
+from compressed_data_classification.src.training import mlp_training
+from compressed_data_classification.src.training import svm_with_rbf_training
+from compressed_data_classification.src.training import qsvc_training
 
-# Carregue os dados
-df = pd.read_csv('compressed_data_classification/data.csv')
+def import_and_split_dataset(data_path):
+    # Carregue os dados
+    df = pd.read_csv(data_path)
 
-# df = df.drop(columns=['Unnamed: 0', 'F3_norm'])
+    # df = df.drop(columns=['Unnamed: 0', 'F3_norm'])
 
-# Variável alvo
-y = df['target']
-X = df.drop(columns=['target', 'Unnamed: 0'])
+    # Variável alvo
+    y = df['target']
+    X = df.drop(columns=['target', 'Unnamed: 0'])
 
-# Encoder das labels
-label_encoder = LabelEncoder()
-y_encoded = label_encoder.fit_transform(y)
-class_mapping = dict(zip(label_encoder.classes_, label_encoder.transform(label_encoder.classes_)))
-print("\nMapeamento de Classes:", class_mapping)
+    # Encoder das labels
+    label_encoder = LabelEncoder()
+    y_encoded = label_encoder.fit_transform(y)
+    class_mapping = dict(zip(label_encoder.classes_, label_encoder.transform(label_encoder.classes_)))
+    print("\nMapeamento de Classes:", class_mapping)
 
-# Divisão em treino e teste para avaliação final depois do ajuste
-X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.1, random_state=42)
+    # Divisão em treino e teste para avaliação final depois do ajuste
+    X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.1, random_state=42)
+    
+    return X_train, X_test, y_train, y_test, label_encoder
 
 # Técnica de compressão de dados energy/topk/pca/pure_alpha/random_mesurements
 # techniques = ['energy','topk','pca','pure_alpha','random_mesurements', 'original_data']
-techniques = ['random_mesurements', 'original_data']
+techniques = ['original_data', 'reconstructed_2_dot_5', 'reconstructed_random', 'random_mesurements']
 
 # Console para exibir status
 console = Console()
@@ -53,34 +54,27 @@ console = Console()
 
 # Treinar usando os diferentes métodos de treinamento e salvar cada um
 for technique in techniques:
-        
-    # Converter o X_test antes de testar
-    # cs_transformer = CompressiveSensingTransformer(technique=technique, verbose=True)
-    # X_test_compressed = X_test.apply(lambda row: cs_transformer.extract_features(row.values)[0], axis=1, result_type='expand')
+    
+    if technique == 'original_data':
+        X_train, X_test, y_train, y_test, label_encoder = import_and_split_dataset('compressed_data_classification/data/raw/data.csv')
+    if technique == 'reconstructed_2_dot_5':
+        X_train, X_test, y_train, y_test, label_encoder = import_and_split_dataset('compressed_data_classification/data/processed/data_sampled_2_dot_5_khz.csv')
+    else:
+        X_train, X_test, y_train, y_test, label_encoder = import_and_split_dataset('compressed_data_classification/data/processed/data_sampled_with_phi.csv')        
 
     # Modelos
-    # print()
-    # print("RIDGE REGRESSOR")
-    # rr_info = ridge_training(X_train, y_train, X_test, y_test, X)
-    # print()
-    # print("RANDOM FOREST")
-    # rf_info = random_forest_training(X_train, y_train, X_test, y_test, X)
-    # print()
-    # print("XGBOOST")
-    # xgb_info = xgboost_training(X_train, y_train, X_test, y_test, X)
     with Status(f"[bold green]Treinando MLP para {technique}...[/]", spinner="dots"):
         mlp_info = mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
     print()
     with Status(f"[bold green]Treinando SVM com RBF para {technique}...[/]", spinner="dots"):
-        svm_rbf = svc_rbf_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
+        svm_rbf = svm_with_rbf_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
     print()
-    # print("ADABOOST")
-    # ada_info = adaboost_training(X_train, y_train, X_test, y_test, X)
+    with Status(f"[bold green]Treinando SVM quadrático para {technique}...[/]", spinner="dots"):
+        qsvc = qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
+    print()
 
     # Montando tabela de comparação entre os modelos
-    # df = pd.DataFrame([rr_info, rf_info, xgb_info, mlp_info])
-    # df = pd.DataFrame([rr_info, rf_info, mlp_info, ada_info])
-    df = pd.DataFrame([mlp_info, svm_rbf])
+    df = pd.DataFrame([mlp_info, svm_rbf, qsvc])
     # df = df.drop('melhores_parametros')
 
     # print(df)
