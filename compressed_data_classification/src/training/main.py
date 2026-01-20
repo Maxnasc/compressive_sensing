@@ -42,7 +42,7 @@ def import_and_split_dataset(data_path):
     # Divisão em treino e teste para avaliação final depois do ajuste
     X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.1, random_state=42)
     
-    return X_train, X_test, y_train, y_test, label_encoder
+    return X_train, X_test, y_train, y_test, label_encoder, X
 
 # Técnica de compressão de dados energy/topk/pca/pure_alpha/random_mesurements
 # techniques = ['energy','topk','pca','pure_alpha','random_mesurements', 'original_data']
@@ -56,11 +56,11 @@ console = Console()
 for technique in techniques:
     
     if technique == 'original_data':
-        X_train, X_test, y_train, y_test, label_encoder = import_and_split_dataset('compressed_data_classification/data/raw/data.csv')
+        X_train, X_test, y_train, y_test, label_encoder, X = import_and_split_dataset('compressed_data_classification/data/raw/data.csv')
     if technique == 'reconstructed_2_dot_5':
-        X_train, X_test, y_train, y_test, label_encoder = import_and_split_dataset('compressed_data_classification/data/processed/data_sampled_2_dot_5_khz.csv')
+        X_train, X_test, y_train, y_test, label_encoder, X = import_and_split_dataset('compressed_data_classification/data/processed/data_sampled_2_dot_5_khz.csv')
     else:
-        X_train, X_test, y_train, y_test, label_encoder = import_and_split_dataset('compressed_data_classification/data/processed/data_sampled_with_phi.csv')        
+        X_train, X_test, y_train, y_test, label_encoder, X = import_and_split_dataset('compressed_data_classification/data/processed/data_sampled_with_phi.csv')        
 
     # Modelos
     with Status(f"[bold green]Treinando MLP para {technique}...[/]", spinner="dots"):
