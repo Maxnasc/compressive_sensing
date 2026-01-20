@@ -28,7 +28,7 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique, label_encod
 
     # --- Configurações de Paths ---
     # É uma boa prática garantir que os diretórios existam
-    base_path = Path("compressed_data_classification/src/models/best_models_result/svc_rbf")
+    base_path = Path("compressed_data_classification/src/models/best_models_result/qsvc")
     Path(base_path, "emissions").mkdir(parents=True, exist_ok=True)
     
     # Ajustando paths para o SVC (RBF)
@@ -49,24 +49,37 @@ def svc_rbf_training(X_train, y_train, X_test, y_test, X, technique, label_encod
     if technique == 'original_data':
         pipeline = Pipeline([
             ('feature_extraction', XPQRSFeatureExtractor()),
-            ('svc_rbf', SVC(random_state=42))
+            ('qsvc', SVC(kernel='poly', degree=2))
         ])
     else:
          pipeline = Pipeline([
             ('cs_trasnformer', CompressiveSensingTransformer(technique=technique, verbose=True)),
             ('feature_extraction', XPQRSFeatureExtractor()),
-            ('svc_rbf', SVC(random_state=42))
+            ('qsvc', SVC(kernel='poly', degree=2))
         ])
     
     # --- Hiperparâmetros para o SVC com Kernel RBF ---
     # C: Parâmetro de Regularização (inverso da força de regularização)
     # gamma: Coeficiente do kernel RBF (influencia a "alcance" de uma única amostra de treinamento)
     param_grid = {
-        "svc__C": [0.1, 1, 10], # Regularização
-        "svc__gamma": [0.001, 0.01, 0.1], # Kernel RBF
-        "svc__kernel": ["rbf"], # Focando no Kernel RBF
-        "svc__random_state": [42],
-        "svc__probability": [True], # Necessário para predict_proba
+        # C: Controla o trade-off entre a margem suave e a classificação correta
+        # Valores de 0.001 a 1000 para cobrir desde alta regularização até sobreajuste
+        'classifier__C': [0.1, 1, 10, 100, 1000],
+        
+        # Kernel fixo em polinomial de grau 2 conforme o artigo
+        'classifier__kernel': ['poly'],
+        'classifier__degree': [2],
+        
+        # Gamma: Define a influência de um único exemplo de treinamento
+        # 'scale' e 'auto' são bons pontos de partida, mas valores manuais refinam o modelo
+        'classifier__gamma': ['scale', 'auto', 0.01, 0.1, 1],
+        
+        # Coef0: O parâmetro 'r' na fórmula (gamma*<x,x'> + r)^d. 
+        # É crucial para kernels polinomiais para controlar a influência de termos de alta ordem
+        'classifier__coef0': [0, 1, 5],
+        
+        # Decision_function_shape: 'ovr' (one-vs-rest) é o padrão para multiclasse
+        'classifier__decision_function_shape': ['ovr']
     }
     
     # Melhores parâmetros para cada técnica

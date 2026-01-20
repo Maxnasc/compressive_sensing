@@ -11,7 +11,8 @@ import numpy as np
 from codecarbon import OfflineEmissionsTracker
 import os
 from pathlib import Path
-from compressed_data_classification_old.CS_transformer import CompressiveSensingTransformer
+from compressed_data_classification.src.pipelines.CS_transformer import CompressiveSensingTransformer
+from compressed_data_classification.src.pipelines.FE_transformer import XPQRSFeatureExtractor
 
 
 def mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
@@ -22,22 +23,28 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
     #     output_file=f"compressed_data_classification/models/best_models/emissions/emissions_MLP_{technique}.csv", log_level='critical'
     # )
     
-    # Instanciando o compressive sensing transformer
-    cs_transformer = CompressiveSensingTransformer(technique=technique, verbose=True)
-
-    # Modelo base
-    mlp = MLPClassifier(random_state=42)
+    # --- Configurações de Paths ---
+    # É uma boa prática garantir que os diretórios existam
+    base_path = Path("compressed_data_classification/src/models/best_models_result/mlp")
+    Path(base_path, "emissions").mkdir(parents=True, exist_ok=True)
+    
+    # Ajustando paths para o SVC (RBF)
+    model_path = f"compressed_data_classification/src/models/best_models_result/mlp/model_{technique}.pkl"
+    results_path = f"compressed_data_classification/src/models/best_models_result/mlp/results_{technique}.json"
+    report_result_path = f"compressed_data_classification/src/models/best_models_result/mlp/report_result_{technique}.json"
+    cm_plot_path = f"compressed_data_classification/src/models/best_models_result/mlp/plots/confusion_matrix_{technique}.png"
     
     # Criando o pipeline
     if technique == 'original_data':
         pipeline = Pipeline([
-            # ('cs_trasnformer', cs_transformer),
-            ('mlp', mlp)
+            ('feature_extraction', XPQRSFeatureExtractor()),
+            ('mlp', MLPClassifier(random_state=42))
         ])
     else:
-        pipeline = Pipeline([
-            ('cs_trasnformer', cs_transformer),
-            ('mlp', mlp)
+         pipeline = Pipeline([
+            ('cs_trasnformer', CompressiveSensingTransformer(technique=technique, verbose=True)),
+            ('feature_extraction', XPQRSFeatureExtractor()),
+            ('mlp', MLPClassifier(random_state=42))
         ])
 
     param_grid = {
@@ -53,24 +60,23 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
     
     # Melhores parâmetros para cada técnica
     # Carregando o json com as melhores métricas
-    with open(f'compressed_data_classification/models/mlp/mlp_results_{technique}.json') as arq:
-        result_json_content = json.load(arq)
-    
-    best_param_grid = {
-        "mlp__hidden_layer_sizes": [(result_json_content['melhores_parametros']['mlp__hidden_layer_sizes'][0], result_json_content['melhores_parametros']['mlp__hidden_layer_sizes'][1])],
-        "mlp__activation": [result_json_content['melhores_parametros']['mlp__activation']],
-        "mlp__alpha": [result_json_content['melhores_parametros']['mlp__alpha']],
-        "mlp__early_stopping": [result_json_content['melhores_parametros']['mlp__early_stopping']],
-        "mlp__learning_rate": [result_json_content['melhores_parametros']['mlp__learning_rate']],
-        "mlp__learning_rate_init": [result_json_content['melhores_parametros']['mlp__learning_rate_init']],
-        "mlp__max_iter": [result_json_content['melhores_parametros']['mlp__max_iter']],
-        "mlp__solver": [result_json_content['melhores_parametros']['mlp__solver']],
-    }
-    
-    
-    result_json_content['melhores_parametros']
-
-    total_combinations = len(ParameterGrid(param_grid))
+    try:
+        with open(results_path) as arq:
+            result_json_content = json.load(arq)
+        
+        best_param_grid = {
+            "mlp__hidden_layer_sizes": [(result_json_content['melhores_parametros']['mlp__hidden_layer_sizes'][0], result_json_content['melhores_parametros']['mlp__hidden_layer_sizes'][1])],
+            "mlp__activation": [result_json_content['melhores_parametros']['mlp__activation']],
+            "mlp__alpha": [result_json_content['melhores_parametros']['mlp__alpha']],
+            "mlp__early_stopping": [result_json_content['melhores_parametros']['mlp__early_stopping']],
+            "mlp__learning_rate": [result_json_content['melhores_parametros']['mlp__learning_rate']],
+            "mlp__learning_rate_init": [result_json_content['melhores_parametros']['mlp__learning_rate_init']],
+            "mlp__max_iter": [result_json_content['melhores_parametros']['mlp__max_iter']],
+            "mlp__solver": [result_json_content['melhores_parametros']['mlp__solver']],
+        }
+    except:
+        total_combinations = len(ParameterGrid(param_grid))
+        print(f"Total de Combinações do Grid Search: {total_combinations}")
 
     # GridSearch com validação cruzada
     grid_search = GridSearchCV(
@@ -101,7 +107,7 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
     print(grid_search.best_params_)
 
     # Salvar o modelo ajustado
-    joblib.dump(best_model, f"compressed_data_classification/models/best_models/mlp/mlp_model_{technique}.pkl")
+    joblib.dump(best_model, model_path)
     # joblib.dump(best_model, f"compressed_data_classification/models/mlp/mlp_model_{technique}.pkl")
 
     # Avaliação no conjunto de teste
@@ -131,10 +137,10 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
         # "mean_emission": round((emissions / total_combinations), 4) if total_combinations > 0 and total_combinations != None else 0,
     }
 
-    with open(f"compressed_data_classification/models/best_models/mlp/mlp_results_{technique}.json", "w") as f:
+    with open(results_path, "w") as f:
         json.dump(doc, f)
 
-    with open(f"compressed_data_classification/models/best_models/mlp/mlp_report_result_{technique}.json", "w") as f:
+    with open(report_result_path, "w") as f:
         json.dump(report, f, indent=4)
         
     # --- Plot: Matriz de Confusão para 17 Classes ---
@@ -165,6 +171,6 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
     plt.ylabel("Classe Verdadeira")
     plt.xlabel("Classe Predita")
     plt.tight_layout()
-    plt.savefig(f"compressed_data_classification/models/best_models/mlp/mlp_confusion_matrix_labels_{technique}.png")
+    plt.savefig(cm_plot_path)
 
     return doc
