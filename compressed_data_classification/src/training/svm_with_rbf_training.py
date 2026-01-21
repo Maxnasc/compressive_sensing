@@ -71,20 +71,20 @@ def svm_with_rbf_training(X_train, y_train, X_test, y_test, X, technique, label_
     
     # Melhores parâmetros para cada técnica
     # Carregando o json com as melhores métricas
-    try:
-        with open(results_path) as arq:
-            result_json_content = json.load(arq)
+    # try:
+    #     with open(results_path) as arq:
+    #         result_json_content = json.load(arq)
         
-        best_param_grid = {
-            "svc__C": [result_json_content['melhores_parametros']['svc__C']],
-            "svc__gamma": [result_json_content['melhores_parametros']['svc__gamma']],
-            "svc__kernel": [result_json_content['melhores_parametros']['svc__kernel']],
-            "svc__random_state": [42],
-            "svc__probability": [True], # Necessário para predict_proba
-        }
-    except:
-        total_combinations = len(ParameterGrid(param_grid))
-        print(f"Total de Combinações do Grid Search: {total_combinations}")
+    #     best_param_grid = {
+    #         "svc__C": [result_json_content['melhores_parametros']['svc__C']],
+    #         "svc__gamma": [result_json_content['melhores_parametros']['svc__gamma']],
+    #         "svc__kernel": [result_json_content['melhores_parametros']['svc__kernel']],
+    #         "svc__random_state": [42],
+    #         "svc__probability": [True], # Necessário para predict_proba
+    #     }
+    # except:
+    #     total_combinations = len(ParameterGrid(param_grid))
+    #     print(f"Total de Combinações do Grid Search: {total_combinations}")
 
     # GridSearch com validação cruzada
     # Usando 'accuracy' como métrica principal para classificação multiclasse

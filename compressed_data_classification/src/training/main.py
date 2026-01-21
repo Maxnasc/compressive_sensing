@@ -9,15 +9,12 @@ import sys
 import os
 from rich.console import Console
 from rich.status import Status
-# import seaborn as sns
-# from ridge_regressor.ridge_regressor_training import ridge_training
-# from randon_forest.random_forest_training import random_forest_training
-# from xg_boost.xgboost_training import xgboost_training
 
-# Linha corrigida: Adiciona o diretório raiz 'COMPRESSIVE_SENSING' ao sys.path
-# '...' sobe dois níveis, chegando no diretório raiz do projeto.
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))) 
-# Note o '..', '..' acima
+# Pega o caminho absoluto até a pasta 'compressed_data_classification'
+# Baseado na sua imagem, subindo 3 níveis a partir do main.py
+root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
+if root_path not in sys.path:
+    sys.path.append(root_path)
 
 from compressed_data_classification.src.training.mlp_training import mlp_training
 from compressed_data_classification.src.training.svm_with_rbf_training import svm_with_rbf_training

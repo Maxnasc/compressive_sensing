@@ -45,7 +45,7 @@ class XPQRSFeatureExtractor(BaseEstimator, TransformerMixin):
         Processa cada sinal para gerar o vetor de 15 características[cite: 160, 161].
         """
         features_list = []
-        for signal in X:
+        for signal in X.values:
             # Gera o sinal original + 4 derivadas
             all_signals = self._get_approximated_derivatives(signal)
             
