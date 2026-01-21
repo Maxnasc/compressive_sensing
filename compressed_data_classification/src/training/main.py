@@ -20,6 +20,9 @@ from compressed_data_classification.src.training.mlp_training import mlp_trainin
 from compressed_data_classification.src.training.svm_with_rbf_training import svm_with_rbf_training
 from compressed_data_classification.src.training.qsvc_training import qsvc_training
 
+import time
+from utils.utils import send_telegram_msg
+
 def import_and_split_dataset(data_path):
     # Carregue os dados
     df = pd.read_csv(data_path)
@@ -40,6 +43,9 @@ def import_and_split_dataset(data_path):
     X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.1, random_state=42)
     
     return X_train, X_test, y_train, y_test, label_encoder, X
+
+# Iniciando o código
+start_global = time.time()
 
 # Técnica de compressão de dados energy/topk/pca/pure_alpha/random_mesurements
 # techniques = ['energy','topk','pca','pure_alpha','random_mesurements', 'original_data']
@@ -76,6 +82,14 @@ for technique in techniques:
 
     # print(df)
     df.to_excel(f'sensor_potencial_hidrico_ai/model/resultados_modelos_{technique}.xlsx')
+
+
+end_global = time.time()
+duration = end_global-start_global
+
+minutes, seconds = divmod(duration, 60)
+
+send_telegram_msg(f"🚀 Treinamento dos modelos usando compressive sensing terminado!\n⏱️ Tempo total: {int(minutes)}m {seconds:.2f}s")
 
 # Mostrar todos os gráficos
 # plt.show()
