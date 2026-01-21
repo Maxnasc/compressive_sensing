@@ -96,8 +96,8 @@ def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
     #         "svc__probability": [True], # Necessário para predict_proba
     #     }
     # except:
-    #     total_combinations = len(ParameterGrid(param_grid))
-    #     print(f"Total de Combinações do Grid Search: {total_combinations}")
+    total_combinations = len(ParameterGrid(param_grid))
+    print(f"Total de Combinações do Grid Search: {total_combinations}")
 
     # GridSearch com validação cruzada
     # Usando 'accuracy' como métrica principal para classificação multiclasse

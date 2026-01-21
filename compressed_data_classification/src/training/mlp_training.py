@@ -75,8 +75,8 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
     #         "mlp__solver": [result_json_content['melhores_parametros']['mlp__solver']],
     #     }
     # except:
-    #     total_combinations = len(ParameterGrid(param_grid))
-    #     print(f"Total de Combinações do Grid Search: {total_combinations}")
+    total_combinations = len(ParameterGrid(param_grid))
+    print(f"Total de Combinações do Grid Search: {total_combinations}")
 
     # GridSearch com validação cruzada
     grid_search = GridSearchCV(
