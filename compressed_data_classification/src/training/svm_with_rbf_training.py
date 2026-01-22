@@ -45,18 +45,30 @@ def svm_with_rbf_training(X_train, y_train, X_test, y_test, X, technique, label_
     #     log_level='critical'
     # )
     
+    # # Criando o pipeline
+    # if technique in ['original_data', 'random_mesurements']:
+    #     pipeline = Pipeline([
+    #         ('feature_extraction', XPQRSFeatureExtractor()),
+    #         ('svc_rbf', SVC(random_state=42))
+    #     ])
+    # else:
+    #      pipeline = Pipeline([
+    #         ('cs_trasnformer', CompressiveSensingTransformer(technique=technique, verbose=True)),
+    #         ('feature_extraction', XPQRSFeatureExtractor()),
+    #         ('svc_rbf', SVC(random_state=42))
+    #     ])
+         
     # Criando o pipeline
-    if technique in ['original_data', 'random_mesurements']:
-        pipeline = Pipeline([
-            ('feature_extraction', XPQRSFeatureExtractor()),
-            ('svc_rbf', SVC(random_state=42))
-        ])
-    else:
-         pipeline = Pipeline([
-            ('cs_trasnformer', CompressiveSensingTransformer(technique=technique, verbose=True)),
-            ('feature_extraction', XPQRSFeatureExtractor()),
-            ('svc_rbf', SVC(random_state=42))
-        ])
+    pipeline_steps = [
+        ('feature_extraction', XPQRSFeatureExtractor()),
+        ('svc_rbf', SVC(random_state=42, probability=True))  # ✅ probability=True aqui
+    ]
+    
+    # ✅ Aplicar CS_transformer APENAS se não for original_data ou random_mesurements
+    if technique not in ['original_data', 'random_mesurements']:
+        pipeline_steps.insert(0, ('cs_transformer', CompressiveSensingTransformer(technique=technique, verbose=True)))
+    
+    pipeline = Pipeline(pipeline_steps)
     
     # --- Hiperparâmetros para o SVC com Kernel RBF ---
     # C: Parâmetro de Regularização (inverso da força de regularização)

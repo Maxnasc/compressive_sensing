@@ -44,19 +44,18 @@ def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
     #     output_file=f"compressed_data_classification/models/best_models/emissions/emissions_SVC_RBF_{technique}.csv",
     #     log_level='critical'
     # )
-    
+         
     # Criando o pipeline
-    if technique in ['original_data', 'random_mesurements']:
-        pipeline = Pipeline([
-            ('feature_extraction', XPQRSFeatureExtractor()),
-            ('qsvc', SVC(kernel='poly', degree=2))
-        ])
-    else:
-         pipeline = Pipeline([
-            ('cs_trasnformer', CompressiveSensingTransformer(technique=technique, verbose=True)),
-            ('feature_extraction', XPQRSFeatureExtractor()),
-            ('qsvc', SVC(kernel='poly', degree=2))
-        ])
+    pipeline_steps = [
+        ('feature_extraction', XPQRSFeatureExtractor()),
+        ('qsvc', SVC(kernel='poly', degree=2))
+    ]
+    
+    # ✅ Aplicar CS_transformer APENAS se não for original_data ou random_mesurements
+    if technique not in ['original_data', 'random_mesurements']:
+        pipeline_steps.insert(0, ('cs_transformer', CompressiveSensingTransformer(technique=technique, verbose=True)))
+    
+    pipeline = Pipeline(pipeline_steps)
     
     # --- Hiperparâmetros para o SVC com Kernel RBF ---
     # C: Parâmetro de Regularização (inverso da força de regularização)

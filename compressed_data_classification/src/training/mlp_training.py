@@ -33,19 +33,18 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
     results_path = f"compressed_data_classification/src/models/best_models_result/mlp/results_{technique}.json"
     report_result_path = f"compressed_data_classification/src/models/best_models_result/mlp/report_result_{technique}.json"
     cm_plot_path = f"compressed_data_classification/src/models/best_models_result/mlp/plots/confusion_matrix_{technique}.png"
-    
+         
     # Criando o pipeline
-    if technique in ['original_data', 'random_mesurements']:
-        pipeline = Pipeline([
-            ('feature_extraction', XPQRSFeatureExtractor()),
-            ('mlp', MLPClassifier(random_state=42))
-        ])
-    else:
-         pipeline = Pipeline([
-            ('cs_trasnformer', CompressiveSensingTransformer(technique=technique, verbose=True)),
-            ('feature_extraction', XPQRSFeatureExtractor()),
-            ('mlp', MLPClassifier(random_state=42))
-        ])
+    pipeline_steps = [
+        ('feature_extraction', XPQRSFeatureExtractor()),
+        ('mlp', MLPClassifier(random_state=42))
+    ]
+    
+    # ✅ Aplicar CS_transformer APENAS se não for original_data ou random_mesurements
+    if technique not in ['original_data', 'random_mesurements']:
+        pipeline_steps.insert(0, ('cs_transformer', CompressiveSensingTransformer(technique=technique, verbose=True)))
+    
+    pipeline = Pipeline(pipeline_steps)
 
     param_grid = {
         "mlp__hidden_layer_sizes": [(20, 10), (10, 10), (15, 10)],

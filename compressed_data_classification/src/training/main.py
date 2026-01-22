@@ -61,11 +61,16 @@ for technique in techniques:
     
     if technique == 'original_data':
         X_train, X_test, y_train, y_test, label_encoder, X = import_and_split_dataset('compressed_data_classification/data/raw/data.csv')
-    if technique == 'reconstructed_2_dot_5':
+    elif technique == 'reconstructed_2_dot_5':
         X_train, X_test, y_train, y_test, label_encoder, X = import_and_split_dataset('compressed_data_classification/data/processed/data_sampled_2_dot_5_khz.csv')
     else:
-        X_train, X_test, y_train, y_test, label_encoder, X = import_and_split_dataset('compressed_data_classification/data/processed/data_sampled_with_phi.csv')        
-
+        X_train, X_test, y_train, y_test, label_encoder, X = import_and_split_dataset('compressed_data_classification/data/processed/data_sampled_with_phi.csv')
+    
+    print(f"\n{'='*60}")
+    print(f"Técnica: {technique}")
+    print(f"X_train shape: {X_train.shape}, X_test shape: {X_test.shape}")
+    print(f"{'='*60}\n")
+    
     try:
         # Modelos
         with Status(f"[bold green]Treinando MLP para {technique}...[/]", spinner="dots"):
