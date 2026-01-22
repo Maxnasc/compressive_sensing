@@ -1,0 +1,16 @@
+{
+    "melhores_parametros": {
+        "svc_rbf__C": 10,
+        "svc_rbf__gamma": 0.001,
+        "svc_rbf__kernel": "rbf",
+        "svc_rbf__probability": true,
+        "svc_rbf__random_state": 42
+    },
+    "acuracia": 0.7747,
+    "roc_auc_score": 0.9816,
+    "mse": 16.5541,
+    "relatorio_classificacao": "              precision    recall  f1-score   support\n\n           0       0.85      0.99      0.92        99\n           1       0.63      0.66      0.65       104\n           2       0.69      0.73      0.71       112\n           3       0.84      0.93      0.88        86\n           4       0.75      0.69      0.72        88\n           5       0.79      0.77      0.78        98\n           6       0.92      0.94      0.93       101\n           7       0.77      0.67      0.72        94\n           8       0.68      0.64      0.66        99\n           9       0.99      1.00      1.00       105\n          10       0.90      0.86      0.88       121\n          11       0.63      0.58      0.60        99\n          12       0.68      0.67      0.68        94\n          13       0.99      1.00      0.99        97\n          14       0.54      0.42      0.47       102\n          15       0.79      0.63      0.70        91\n          16       0.68      0.95      0.79       110\n\n    accuracy                           0.77      1700\n   macro avg       0.77      0.77      0.77      1700\nweighted avg       0.77      0.77      0.77      1700\n",
+    "n_combinations": 9,
+    "best_mean_score": 0.9792,
+    "std_best_score_k_fold": 0.0016
+}

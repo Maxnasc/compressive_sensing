@@ -64,22 +64,26 @@ def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
     param_grid = {
         # C: Controla o trade-off entre a margem suave e a classificação correta
         # Valores de 0.001 a 1000 para cobrir desde alta regularização até sobreajuste
-        'classifier__C': [0.1, 1, 10, 100, 1000],
+        # 'qsvc__C': [0.1, 1, 10, 100, 1000],
+        'qsvc__C': [0.1, 1, 10, 100, 1000],
+
+        # adicionar o probability para evitar o erro de predict_proba
+        'qsvc__probability': [True]
         
-        # Kernel fixo em polinomial de grau 2 conforme o artigo
-        'classifier__kernel': ['poly'],
-        'classifier__degree': [2],
+        # # Kernel fixo em polinomial de grau 2 conforme o artigo
+        # 'qsvc__kernel': ['poly'],
+        # 'qsvc__degree': [2],
         
-        # Gamma: Define a influência de um único exemplo de treinamento
-        # 'scale' e 'auto' são bons pontos de partida, mas valores manuais refinam o modelo
-        'classifier__gamma': ['scale', 'auto', 0.01, 0.1, 1],
+        # # Gamma: Define a influência de um único exemplo de treinamento
+        # # 'scale' e 'auto' são bons pontos de partida, mas valores manuais refinam o modelo
+        # 'qsvc__gamma': ['scale', 'auto', 0.01, 0.1, 1],
         
-        # Coef0: O parâmetro 'r' na fórmula (gamma*<x,x'> + r)^d. 
-        # É crucial para kernels polinomiais para controlar a influência de termos de alta ordem
-        'classifier__coef0': [0, 1, 5],
+        # # Coef0: O parâmetro 'r' na fórmula (gamma*<x,x'> + r)^d. 
+        # # É crucial para kernels polinomiais para controlar a influência de termos de alta ordem
+        # 'qsvc__coef0': [0, 1, 5],
         
-        # Decision_function_shape: 'ovr' (one-vs-rest) é o padrão para multiclasse
-        'classifier__decision_function_shape': ['ovr']
+        # # Decision_function_shape: 'ovr' (one-vs-rest) é o padrão para multiclasse
+        # 'qsvc__decision_function_shape': ['ovr']
     }
     
     # Melhores parâmetros para cada técnica
@@ -89,11 +93,11 @@ def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
     #         result_json_content = json.load(arq)
         
     #     best_param_grid = {
-    #         "svc__C": [result_json_content['melhores_parametros']['svc__C']],
-    #         "svc__gamma": [result_json_content['melhores_parametros']['svc__gamma']],
-    #         "svc__kernel": [result_json_content['melhores_parametros']['svc__kernel']],
-    #         "svc__random_state": [42],
-    #         "svc__probability": [True], # Necessário para predict_proba
+    #         "qsvc__C": [result_json_content['melhores_parametros']['qsvc__C']],
+    #         "qsvc__gamma": [result_json_content['melhores_parametros']['qsvc__gamma']],
+    #         "qsvc__kernel": [result_json_content['melhores_parametros']['qsvc__kernel']],
+    #         "qsvc__random_state": [42],
+    #         "qsvc__probability": [True], # Necessário para predict_proba
     #     }
     # except:
     total_combinations = len(ParameterGrid(param_grid))

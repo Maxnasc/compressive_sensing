@@ -62,11 +62,11 @@ def svm_with_rbf_training(X_train, y_train, X_test, y_test, X, technique, label_
     # C: Parâmetro de Regularização (inverso da força de regularização)
     # gamma: Coeficiente do kernel RBF (influencia a "alcance" de uma única amostra de treinamento)
     param_grid = {
-        "svc__C": [0.1, 1, 10], # Regularização
-        "svc__gamma": [0.001, 0.01, 0.1], # Kernel RBF
-        "svc__kernel": ["rbf"], # Focando no Kernel RBF
-        "svc__random_state": [42],
-        "svc__probability": [True], # Necessário para predict_proba
+        "svc_rbf__C": [0.1, 1, 10], # Regularização
+        "svc_rbf__gamma": [0.001, 0.01, 0.1], # Kernel RBF
+        "svc_rbf__kernel": ["rbf"], # Focando no Kernel RBF
+        "svc_rbf__random_state": [42],
+        "svc_rbf__probability": [True], # Necessário para predict_proba
     }
     
     # Melhores parâmetros para cada técnica
@@ -76,11 +76,11 @@ def svm_with_rbf_training(X_train, y_train, X_test, y_test, X, technique, label_
     #         result_json_content = json.load(arq)
         
     #     best_param_grid = {
-    #         "svc__C": [result_json_content['melhores_parametros']['svc__C']],
-    #         "svc__gamma": [result_json_content['melhores_parametros']['svc__gamma']],
-    #         "svc__kernel": [result_json_content['melhores_parametros']['svc__kernel']],
-    #         "svc__random_state": [42],
-    #         "svc__probability": [True], # Necessário para predict_proba
+    #         "svc_rbf__C": [result_json_content['melhores_parametros']['svc_rbf__C']],
+    #         "svc_rbf__gamma": [result_json_content['melhores_parametros']['svc_rbf__gamma']],
+    #         "svc_rbf__kernel": [result_json_content['melhores_parametros']['svc_rbf__kernel']],
+    #         "svc_rbf__random_state": [42],
+    #         "svc_rbf__probability": [True], # Necessário para predict_proba
     #     }
     # except:
     total_combinations = len(ParameterGrid(param_grid))
