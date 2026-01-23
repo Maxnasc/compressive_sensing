@@ -358,12 +358,16 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         
         # Convertendo o Y de dataframe para array numpy
         Y = Y.to_numpy()
+        
+        # TODO: Converter Y em batchs de 12 sinais tal qual o feito no código de tunnig
 
         for i in range(Y.shape[0]):
             x_hat = self.reconstruct_from_y(
                 Y[i],
             )
             X_rec.append(x_hat)
+            
+        # TODO: Separar os sinais convertidos em distúrbios unitários novamente (dividir por 12)
 
         return np.vstack(X_rec)
 

@@ -7,6 +7,7 @@ import itertools
 import random
 import json
 from sklearn.linear_model import OrthogonalMatchingPursuit, Lasso
+from numpy.lib.stride_tricks import sliding_window_view
 
 # ----------------------------
 # 1. CONFIGURAÇÃO E CAMINHOS
@@ -21,7 +22,7 @@ if not os.path.exists(DATA_DIR):
 
 # Grade de Parâmetros Extensiva
 PARAM_GRID = {
-    "SAMPLE_M": [30, 40, 50],
+    "SAMPLE_M": [30*12, 40*12, 50*12, 60*12],
     "WAVELET": ["db4", "db8", "sym4"],
     "WAVELET_LEVEL": [2, 3, 4],
     "METHOD": ["OMP", "LASSO"],
@@ -261,11 +262,22 @@ if __name__ == "__main__":
     # Carregamento
     try:
         df_data = pd.read_csv(CSV_PATH)
-        X_all = df_data.filter(regex=r"^s\d+$").values
-        N_len = X_all.shape[1]
+        X_raw = df_data.filter(regex=r"^s\d+$").values
     except Exception as e:
         print(f"Erro ao carregar CSV: {e}")
         exit()
+        
+    # Fazendo o janelamento dos sinais com 12 sinais por janela para tunning
+    window_size = 12 # Janela de 12 sinais
+    
+    X_windows = sliding_window_view(X_raw, window_shape=window_size, axis=0)
+    X_windows = X_windows.transpose(0,2,1) # Ajusta para (Janelas, 12, 100)
+    
+    # ACHATAMENTO: Transformamos cada janela 12x100 em um vetor de 1200
+    num_windows = X_windows.shape[0]
+    X_all = X_windows.reshape(num_windows, -1)
+    
+    N_len = X_all.shape[1]
 
     # Estágio 1: Grid Search
     results_df = grid_search_robust(X_all, N_len)
