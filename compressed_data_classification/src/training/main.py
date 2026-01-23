@@ -83,7 +83,8 @@ for technique in techniques:
             qsvc = qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
         print()
     except  Exception as e:
-        send_telegram_msg(f"Falha na execução do código: {e}")
+        send_telegram_msg(f"Falha na execução do código: {technique}")
+        break
 
     # Montando tabela de comparação entre os modelos
     df = pd.DataFrame([mlp_info, svm_rbf, qsvc])
