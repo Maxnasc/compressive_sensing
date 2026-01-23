@@ -1,0 +1,13 @@
+{
+    "melhores_parametros": {
+        "qsvc__C": 1000,
+        "qsvc__probability": true
+    },
+    "acuracia": 0.2835,
+    "roc_auc_score": 0.8658,
+    "mse": 33.7624,
+    "relatorio_classificacao": "              precision    recall  f1-score   support\n\n           0       0.22      0.10      0.14        99\n           1       0.29      0.22      0.25       104\n           2       0.22      0.06      0.10       112\n           3       0.29      0.33      0.31        86\n           4       0.25      0.06      0.09        88\n           5       0.32      0.31      0.31        98\n           6       0.80      0.82      0.81       101\n           7       0.18      0.26      0.21        94\n           8       0.76      0.13      0.22        99\n           9       0.19      1.00      0.31       105\n          10       0.39      0.16      0.22       121\n          11       0.33      0.24      0.28        99\n          12       0.78      0.22      0.35        94\n          13       0.20      0.56      0.29        97\n          14       0.00      0.00      0.00       102\n          15       0.38      0.40      0.39        91\n          16       0.00      0.00      0.00       110\n\n    accuracy                           0.28      1700\n   macro avg       0.33      0.29      0.25      1700\nweighted avg       0.33      0.28      0.25      1700\n",
+    "n_combinations": 5,
+    "best_mean_score": 0.8615,
+    "std_best_score_k_fold": 0.0046
+}
