@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 
 class XPQRSFeatureExtractor(BaseEstimator, TransformerMixin):
@@ -44,6 +45,11 @@ class XPQRSFeatureExtractor(BaseEstimator, TransformerMixin):
         """
         Processa cada sinal para gerar o vetor de 15 características[cite: 160, 161].
         """
+        # Verificando se X é um dicionário ou um array numpy
+        if type(X) == np.ndarray: # <- Veio do CS
+            # Converte para dataframe
+            X = pd.DataFrame(X)
+        
         features_list = []
         for signal in X.values:
             # Gera o sinal original + 4 derivadas

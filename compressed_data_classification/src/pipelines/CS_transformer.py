@@ -27,7 +27,7 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         self,
         technique: str = "energy",
         cs_structures_path: str = "compressed_data_classification/src/cs/cs_constants",
-        cs_metrics_path: str = "compressed_data_classification/src/cs/results/metrics/metricsbest_cs_tune_metrics.json",
+        cs_metrics_path: str = "compressed_data_classification/src/cs/results/metrics/best_cs_tune_metrics.json",
         lasso_alpha: float = 1e-4,
         K_topk: int = 40,
         pca_components: int = 40,
@@ -56,13 +56,6 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
 
         # runtime caches
         self._topk_idx = None
-        # tenta carregar estruturas CS automaticamente (se existir arquivo)
-        if os.path.exists(self.cs_structures_path):
-            try:
-                self.load_cs_structures(self.cs_structures_path)
-            except Exception as e:
-                if self.verbose:
-                    print(f"[INIT] Falha ao carregar cs_structures: {e}")
 
     # -------------------------
     # I/O das estruturas CS
@@ -101,16 +94,16 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         with open(self.cs_metrics_path, 'r') as f:
             metrics = json.load(f)
         
-        with open(path, "rb") as f:
-            data = pickle.load(f)
+        # with open(path, "rb") as f:
+        #     data = pickle.load(f)
         self.Phi = np.load(f'{path}/cs_best_result_Phi.npy')
         self.Psi_wave = np.load(f'{path}/cs_best_result_Psi_w.npy')
         self.A_norm = np.load(f'{path}/cs_best_result_A_norm.npy')
         self.col_norms = np.load(f'{path}/cs_best_result_col_norms.npy')
         self.N = metrics.get("config_parameters").get("N")
         self.lasso_alpha = metrics.get("config_parameters").get("PARAM_VAL")
-        self.shapes = data.get("shapes")
-        self.Psi_concat = data.get("Psi_concat", None)
+        # self.shapes = data.get("shapes")
+        # self.Psi_concat = data.get("Psi_concat", None)
         if self.verbose:
             print(f"[LOAD] Estruturas CS carregadas de: {path}")
 
@@ -348,11 +341,12 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
     # -------------------------
     def fit(self, X: Optional[np.ndarray] = None, y: Optional[np.ndarray] = None):
         # transformer não precisa ajustar nada para as estruturas CS se elas já foram carregadas
-        if self.A_norm is None or self.col_norms is None:
-            if self.verbose:
-                print(
-                    "[fit] A_norm/col_norms não definidos; chame save_cs_structures para persistir ou carregue manualmente."
-                )
+        if self.A_norm is None or self.col_norms is None or self.Phi_ is None:
+            try:
+                self.load_cs_structures(self.cs_structures_path)
+            except Exception as e:
+                if self.verbose:
+                    print(f"[INIT] Falha ao carregar cs_structures: {e}")
         return self
 
     def transform(self, Y: np.ndarray) -> np.ndarray:
@@ -361,12 +355,13 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         Retorna sinais reconstruídos (n_samples x N)
         """
         X_rec = []
+        
+        # Convertendo o Y de dataframe para array numpy
+        Y = Y.to_numpy()
 
         for i in range(Y.shape[0]):
             x_hat = self.reconstruct_from_y(
                 Y[i],
-                method=self.method,
-                param_val=self.param_val,
             )
             X_rec.append(x_hat)
 
