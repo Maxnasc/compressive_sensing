@@ -21,7 +21,7 @@ from compressed_data_classification.src.training.svm_with_rbf_training import sv
 from compressed_data_classification.src.training.qsvc_training import qsvc_training
 
 import time
-from utils.utils import send_telegram_msg
+from compressed_data_classification.utils.utils import send_telegram_msg
 
 def import_and_split_dataset(data_path):
     # Carregue os dados
