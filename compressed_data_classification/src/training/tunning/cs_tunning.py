@@ -22,7 +22,7 @@ if not os.path.exists(DATA_DIR):
 
 # Grade de Parâmetros Extensiva
 PARAM_GRID = {
-    "SAMPLE_M": [30*12, 40*12, 50*12, 60*12],
+    "SAMPLE_M": [30*12, 40*12, 50*12],
     "WAVELET": ["db4", "db8", "sym4"],
     "WAVELET_LEVEL": [2, 3, 4],
     "METHOD": ["OMP", "LASSO"],
@@ -274,9 +274,7 @@ if __name__ == "__main__":
         exit()
         
     # Fazendo o janelamento dos sinais com 12 sinais por janela para tunning
-    
-    
-    X_windows = sliding_window_view(X_raw, window_shape=window_size, axis=0)[::step]
+    X_windows = sliding_window_view(X_raw, window_shape=WINDOW_SIZE, axis=0)[::WINDOW_STEP]
     X_windows = X_windows.transpose(0,2,1) # Ajusta para (Janelas, 12, 100)
     
     # ACHATAMENTO: Transformamos cada janela 12x100 em um vetor de 1200

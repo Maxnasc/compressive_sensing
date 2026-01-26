@@ -423,6 +423,7 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
             X_rec.append(x_hat)
             
         # Separar os sinais convertidos em distúrbios unitários novamente (dividir por 12)
+        X_rec = np.array(X_rec)
         num_windows = X_rec.shape[0]
         X_rec_3d = X_rec.reshape(num_windows, 12, 100)
         X_resized = self.reverse_windowing(windows_3d=X_rec_3d, original_rows=Y.shape[0])
