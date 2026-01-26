@@ -31,6 +31,10 @@ OMP_K_CANDIDATES = [10, 20, 30, 40]
 LASSO_ALPHA_CANDIDATES = [1e-4, 1e-3, 1e-2]
 REFINE_SPIKE_THRESHOLD_K = 4.5  # Sensibilidade para o refinamento MAD
 
+# Constantes de janelamento
+WINDOW_SIZE = 12 # Janela de 12 sinais
+WINDOW_STEP = 6 # Padrão de sobreposição (metade)
+
 # ----------------------------
 # 2. MÉTRICAS E PROCESSAMENTO DE SINAL
 # ----------------------------
@@ -228,6 +232,8 @@ def finalize_and_save(X_matrix, config, N):
     # Estrutura JSON final
     config_parameters = {k: v for k, v in config.items()}
     config_parameters['N'] = N
+    config_parameters['WINDOW_SIZE'] = WINDOW_SIZE
+    config_parameters['WINDOW_STEP'] = WINDOW_STEP
     to_save = {
         "config_parameters": config_parameters,
         "performance_on_selected_signal": metrics,
@@ -268,9 +274,9 @@ if __name__ == "__main__":
         exit()
         
     # Fazendo o janelamento dos sinais com 12 sinais por janela para tunning
-    window_size = 12 # Janela de 12 sinais
     
-    X_windows = sliding_window_view(X_raw, window_shape=window_size, axis=0)
+    
+    X_windows = sliding_window_view(X_raw, window_shape=window_size, axis=0)[::step]
     X_windows = X_windows.transpose(0,2,1) # Ajusta para (Janelas, 12, 100)
     
     # ACHATAMENTO: Transformamos cada janela 12x100 em um vetor de 1200

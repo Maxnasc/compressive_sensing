@@ -9,7 +9,9 @@
     "avg_cc": 0.9851298666940442,
     "best_signal_idx": 5439,
     "best_signal_cc": 0.996615142283156,
-    "N": 1200
+    "N": 1200,
+    "WINDOW_SIZE": 12,
+    "WINDOW_STEP": 6
   },
   "performance_on_selected_signal": {
     "mse_refined": 0.013949335670871556,

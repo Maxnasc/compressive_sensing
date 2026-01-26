@@ -5,6 +5,7 @@ import json
 from typing import Optional, Tuple, List, Union
 
 import numpy as np
+from numpy.lib.stride_tricks import sliding_window_view
 import pandas as pd
 from joblib import Parallel, delayed
 
@@ -53,6 +54,8 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         self.col_norms = None
         self.N = None
         self.shapes = None
+        self.window_size = None
+        self.window_step = None
 
         # runtime caches
         self._topk_idx = None
@@ -102,6 +105,8 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         self.col_norms = np.load(f'{path}/cs_best_result_col_norms.npy')
         self.N = metrics.get("config_parameters").get("N")
         self.lasso_alpha = metrics.get("config_parameters").get("PARAM_VAL")
+        self.window_size = metrics.get("config_parameters").get("WINDOW_SIZE")
+        self.window_step = metrics.get("config_parameters").get("WINDOW_STEP")
         # self.shapes = data.get("shapes")
         # self.Psi_concat = data.get("Psi_concat", None)
         if self.verbose:
@@ -348,6 +353,55 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
                 if self.verbose:
                     print(f"[INIT] Falha ao carregar cs_structures: {e}")
         return self
+    
+    def sliding_window_maker(self, Y_raw):
+        # Y_raw shape esperado: (N_amostras, 50)
+        
+        # 1. Cria as janelas. Resultado: (N_janelas, 50, 12)
+        Y_windows = sliding_window_view(Y_raw, window_shape=self.window_size, axis=0)[::self.window_step]
+        
+        # 2. Transpõe para o formato (N_janelas, 12, 50)
+        Y_windows = Y_windows.transpose(0, 2, 1) 
+        
+        # 3. ACHATAMENTO DINÂMICO
+        # num_windows = total de janelas geradas
+        # -1 faz o numpy calcular automaticamente: 12 * 50 = 600
+        num_windows = Y_windows.shape[0]
+        Y_all = Y_windows.reshape(num_windows, -1) 
+        
+        return Y_all # Retorna matriz (N_janelas, 600)
+    
+    def reverse_windowing(self, windows_3d, original_rows):
+        """
+        windows_3d: Array (N_janelas, 12, 100)
+        original_rows: 17000 (quantidade de sinais originais)
+        window_step: O passo usado no janelamento (ex: 6 para 50% de sobreposição)
+        """
+        num_janelas, window_size, num_samples = windows_3d.shape
+        
+        # Matriz para acumular os valores reconstruídos
+        reconstructed_full = np.zeros((original_rows, num_samples))
+        # Matriz para contar quantas vezes cada linha foi preenchida (para tirar a média)
+        counts = np.zeros((original_rows, 1))
+        
+        for i in range(num_janelas):
+            start_idx = i * self.window_step
+            end_idx = start_idx + window_size
+            
+            # Caso a última janela ultrapasse o limite de 17000
+            if end_idx > original_rows:
+                overlap_end = original_rows - start_idx
+                reconstructed_full[start_idx:original_rows] += windows_3d[i, :overlap_end, :]
+                counts[start_idx:original_rows] += 1
+            else:
+                reconstructed_full[start_idx:end_idx] += windows_3d[i]
+                counts[start_idx:end_idx] += 1
+                
+        # Divide pelo número de ocorrências para obter a média suave
+        counts[counts == 0] = 1 # Evita divisão por zero
+        final_X = reconstructed_full / counts
+        
+        return final_X
 
     def transform(self, Y: np.ndarray) -> np.ndarray:
         """
@@ -359,17 +413,21 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         # Convertendo o Y de dataframe para array numpy
         Y = Y.to_numpy()
         
-        # TODO: Converter Y em batchs de 12 sinais tal qual o feito no código de tunnig
-
-        for i in range(Y.shape[0]):
+        # Conversão de Y em batchs de 12 sinais tal qual o feito no código de tunnig
+        Y_batch = self.sliding_window_maker(Y_raw=Y)
+        
+        for i in range(Y_batch.shape[0]):
             x_hat = self.reconstruct_from_y(
-                Y[i],
+                Y_batch[i],
             )
             X_rec.append(x_hat)
             
-        # TODO: Separar os sinais convertidos em distúrbios unitários novamente (dividir por 12)
+        # Separar os sinais convertidos em distúrbios unitários novamente (dividir por 12)
+        num_windows = X_rec.shape[0]
+        X_rec_3d = X_rec.reshape(num_windows, 12, 100)
+        X_resized = self.reverse_windowing(windows_3d=X_rec_3d, original_rows=Y.shape[0])
 
-        return np.vstack(X_rec)
+        return np.vstack(X_resized)
 
     def fit_transform(
         self, X: np.ndarray, y: Optional[np.ndarray] = None
