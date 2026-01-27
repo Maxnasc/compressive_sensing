@@ -354,6 +354,22 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
                     print(f"[INIT] Falha ao carregar cs_structures: {e}")
         return self
     
+    def _compute_alphas_batch(self, Y_batch: np.ndarray) -> np.ndarray:
+        """
+        Resolve Lasso para MÚLTIPLAS amostras em paralelo com joblib
+        Y_batch: (N_janelas, M)
+        Retorna: (N_janelas, N) onde N = self.N + len(shapes)
+        """
+        num_samples = Y_batch.shape[0]
+        
+        # Usar joblib.Parallel em vez de loop serial
+        X_rec_list = Parallel(n_jobs=self.n_jobs)(
+            delayed(self.reconstruct_from_y)(Y_batch[i])
+            for i in range(num_samples)
+        )
+        
+        return np.vstack(X_rec_list)
+    
     def sliding_window_maker(self, Y_raw):
         # Y_raw shape esperado: (N_amostras, 50)
         
@@ -408,27 +424,43 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         Y: matriz de sinais subamostrados (n_samples x M)
         Retorna sinais reconstruídos (n_samples x N)
         """
-        X_rec = []
         
-        # Convertendo o Y de dataframe para array numpy
-        Y = Y.to_numpy()
+        Y = Y.to_numpy() if hasattr(Y, 'to_numpy') else Y
+    
+        # 1. Janelamento
+        Y_batch = self.sliding_window_maker(Y_raw=Y)  # (N_janelas, 600)
         
-        # Conversão de Y em batchs de 12 sinais tal qual o feito no código de tunnig
-        Y_batch = self.sliding_window_maker(Y_raw=Y)
+        # 2. **VETORIZAÇÃO: Resolver Lasso para TODAS as janelas de uma vez**
+        X_rec = self._compute_alphas_batch(Y_batch)  # (N_janelas, N)
         
-        for i in range(Y_batch.shape[0]):
-            x_hat = self.reconstruct_from_y(
-                Y_batch[i],
-            )
-            X_rec.append(x_hat)
-            
-        # Separar os sinais convertidos em distúrbios unitários novamente (dividir por 12)
-        X_rec = np.array(X_rec)
+        # 3. Desjanelamento
         num_windows = X_rec.shape[0]
         X_rec_3d = X_rec.reshape(num_windows, 12, 100)
         X_resized = self.reverse_windowing(windows_3d=X_rec_3d, original_rows=Y.shape[0])
+        
+        return X_resized
+        
+        # X_rec = []
+        
+        # # Convertendo o Y de dataframe para array numpy
+        # Y = Y.to_numpy()
+        
+        # # Conversão de Y em batchs de 12 sinais tal qual o feito no código de tunnig
+        # Y_batch = self.sliding_window_maker(Y_raw=Y)
+        
+        # for i in range(Y_batch.shape[0]):
+        #     x_hat = self.reconstruct_from_y(
+        #         Y_batch[i],
+        #     )
+        #     X_rec.append(x_hat)
+            
+        # # Separar os sinais convertidos em distúrbios unitários novamente (dividir por 12)
+        # X_rec = np.array(X_rec)
+        # num_windows = X_rec.shape[0]
+        # X_rec_3d = X_rec.reshape(num_windows, 12, 100)
+        # X_resized = self.reverse_windowing(windows_3d=X_rec_3d, original_rows=Y.shape[0])
 
-        return np.vstack(X_resized)
+        # return np.vstack(X_resized)
 
     def fit_transform(
         self, X: np.ndarray, y: Optional[np.ndarray] = None
