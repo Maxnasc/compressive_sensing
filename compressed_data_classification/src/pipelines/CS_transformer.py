@@ -32,7 +32,7 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         lasso_alpha: float = 1e-4,
         K_topk: int = 40,
         pca_components: int = 40,
-        n_jobs: int = 1,
+        n_jobs: int = -1,
         verbose: bool = False,
     ):
         self.cs_structures_path = cs_structures_path
@@ -234,7 +234,7 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         else:
             model = Lasso(
                 alpha=self.lasso_alpha,
-                max_iter=10000,
+                max_iter=2000,
                 fit_intercept=False
             )
             model.fit(self.A_norm, y)
@@ -416,11 +416,10 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         # Conversão de Y em batchs de 12 sinais tal qual o feito no código de tunnig
         Y_batch = self.sliding_window_maker(Y_raw=Y)
         
-        for i in range(Y_batch.shape[0]):
-            x_hat = self.reconstruct_from_y(
-                Y_batch[i],
-            )
-            X_rec.append(x_hat)
+        X_rec = Parallel(n_jobs=self.n_jobs)(
+            delayed(self.reconstruct_from_y)(Y_batch[i]) 
+            for i in range(Y_batch.shape[0])
+        )
             
         # Separar os sinais convertidos em distúrbios unitários novamente (dividir por 12)
         X_rec = np.array(X_rec)
@@ -428,7 +427,7 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         X_rec_3d = X_rec.reshape(num_windows, 12, 100)
         X_resized = self.reverse_windowing(windows_3d=X_rec_3d, original_rows=Y.shape[0])
 
-        return np.vstack(X_resized)
+        return X_resized
 
     def fit_transform(
         self, X: np.ndarray, y: Optional[np.ndarray] = None
