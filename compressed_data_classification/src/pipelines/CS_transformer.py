@@ -13,15 +13,22 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.linear_model import Lasso
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
-from sklearn.linear_model import OrthogonalMatchingPursuit, Lasso
+from sklearn.linear_model import OrthogonalMatchingPursuit
+
+# Verificar disponibilidade de GPU
+try:
+    import cupy as cp
+    from cuml.linear_model import Lasso as LassoGPU
+    HAS_GPU = True
+except ImportError:
+    HAS_GPU = False
+    cp = None
 
 
 class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
     """
-    Transformer sklearn para extrair features a partir de compressed sensing:
-    - salva/carrega estruturas CS (Phi, Psi_concat opcional, A_norm, col_norms, N, shapes)
-    - extrai alpha (via Lasso), energia por banda (wavelet), top-K alpha, PCA(alpha), ou alpha completo
-    - suporta Phi em 3 formatos: dense matrix (M x N), boolean mask (N,), meas_idx (k,)
+    Transformer sklearn para extrair features a partir de compressed sensing.
+    Suporta CPU (Joblib) e GPU (CuPy + CuML) para aceleração.
     """
 
     def __init__(
@@ -33,6 +40,7 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         K_topk: int = 40,
         pca_components: int = 40,
         n_jobs: int = 1,
+        use_gpu: bool = True,
         verbose: bool = False,
     ):
         self.cs_structures_path = cs_structures_path
@@ -42,6 +50,11 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         self.pca_components = pca_components
         self.n_jobs = n_jobs
         self.verbose = verbose
+        
+        # GPU control
+        self.use_gpu = use_gpu and HAS_GPU
+        if use_gpu and not HAS_GPU:
+            print("[WARN] GPU solicitada mas CuPy/CuML não disponível. Usando CPU.")
         
         # Controle de qual abordagem vai sar usada na trasnformação
         self.technique = technique
@@ -56,6 +69,11 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         self.shapes = None
         self.window_size = None
         self.window_step = None
+        
+        # GPU caches
+        self.A_norm_gpu = None
+        self.col_norms_gpu = None
+        self.Psi_wave_gpu = None
 
         # runtime caches
         self._topk_idx = None
@@ -97,8 +115,6 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         with open(self.cs_metrics_path, 'r') as f:
             metrics = json.load(f)
         
-        # with open(path, "rb") as f:
-        #     data = pickle.load(f)
         self.Phi = np.load(f'{path}/cs_best_result_Phi.npy')
         self.Psi_wave = np.load(f'{path}/cs_best_result_Psi_w.npy')
         self.A_norm = np.load(f'{path}/cs_best_result_A_norm.npy')
@@ -107,10 +123,30 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         self.lasso_alpha = metrics.get("config_parameters").get("PARAM_VAL")
         self.window_size = metrics.get("config_parameters").get("WINDOW_SIZE")
         self.window_step = metrics.get("config_parameters").get("WINDOW_STEP")
-        # self.shapes = data.get("shapes")
-        # self.Psi_concat = data.get("Psi_concat", None)
+        
+        # Transferir para GPU se disponível
+        if self.use_gpu:
+            self._transfer_to_gpu()
+        
         if self.verbose:
             print(f"[LOAD] Estruturas CS carregadas de: {path}")
+            if self.use_gpu:
+                print(f"[GPU] Dados transferidos para GPU")
+
+    def _transfer_to_gpu(self):
+        """Transfere estruturas críticas para GPU uma única vez."""
+        if not self.use_gpu or cp is None:
+            return
+        
+        try:
+            self.A_norm_gpu = cp.asarray(self.A_norm, dtype=cp.float32)
+            self.col_norms_gpu = cp.asarray(self.col_norms, dtype=cp.float32)
+            self.Psi_wave_gpu = cp.asarray(self.Psi_wave, dtype=cp.float32)
+            if self.verbose:
+                print("[GPU] Transferência concluída: A_norm, col_norms, Psi_wave")
+        except Exception as e:
+            print(f"[ERROR] Falha ao transferir para GPU: {e}")
+            self.use_gpu = False
 
     # -------------------------
     # utilitário: checar Phi tipo e aplicar
@@ -130,7 +166,7 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
     def _y_from_Phi(self, signal: np.ndarray) -> np.ndarray:
         """
         Produz y = Phi * signal considerando três formatos de Phi:
-        - matrix dens a (M x N)
+        - matrix densa (M x N)
         - mask booleana (N,)
         - meas_idx (k,)
         """
@@ -151,24 +187,101 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
             )
 
     # -------------------------
-    # Resolver alpha (Lasso) por uma amostra
+    # Resolver alpha (Lasso) - CPU
     # -------------------------
     def _compute_alpha_single(
         self, signal: np.ndarray, alpha_lasso: Optional[float] = None
     ) -> np.ndarray:
-        """Resolve Lasso para uma única amostra e retorna coeficientes desnormalizados (alpha)."""
+        """Resolve Lasso para uma única amostra (CPU)."""
         if alpha_lasso is None:
             alpha_lasso = self.lasso_alpha
         if self.A_norm is None or self.col_norms is None:
-            raise ValueError(
-                "A_norm e col_norms devem estar definidos antes de calcular alpha."
-            )
+            raise ValueError("A_norm e col_norms devem estar definidos.")
+        
         y = self._y_from_Phi(signal)
         model = Lasso(alpha=alpha_lasso, max_iter=10000, fit_intercept=False)
         model.fit(self.A_norm, y)
-        coef_norm = model.coef_.copy()
-        coef = coef_norm / (self.col_norms + 1e-16)  # evitar div por zero
+        coef = model.coef_ / (self.col_norms + 1e-16)
         return coef
+
+    def _compute_alpha_single_gpu(self, signal_gpu) -> np.ndarray:
+        """Resolve Lasso para uma amostra em GPU."""
+        if not self.use_gpu or cp is None:
+            raise RuntimeError("GPU não disponível")
+        
+        try:
+            # Calcular y em GPU
+            if isinstance(self.Phi, np.ndarray) and self.Phi.ndim == 2:
+                Phi_gpu = cp.asarray(self.Phi, dtype=cp.float32)
+                y_gpu = Phi_gpu.dot(signal_gpu)
+            else:
+                # Para mask/index, fazer em CPU
+                signal_np = cp.asnumpy(signal_gpu)
+                y = self._y_from_Phi(signal_np)
+                y_gpu = cp.asarray(y, dtype=cp.float32)
+            
+            # Solver Lasso em GPU
+            model = LassoGPU(
+                alpha=self.lasso_alpha,
+                max_iter=10000,
+                fit_intercept=False,
+                output_type='numpy'  # Retorna numpy direto
+            )
+            model.fit(self.A_norm_gpu, y_gpu)
+            
+            # Desnormalizar
+            coef = model.coef_ / (cp.asnumpy(self.col_norms_gpu) + 1e-16)
+            return coef
+            
+        except Exception as e:
+            print(f"[ERROR GPU] {e}. Voltando para CPU.")
+            signal_np = cp.asnumpy(signal_gpu) if hasattr(signal_gpu, 'get') else signal_gpu
+            return self._compute_alpha_single(signal_np)
+
+    # -------------------------
+    # Batch Alphas - com suporte GPU
+    # -------------------------
+    def _compute_alphas_batch_cpu(self, Y_batch: np.ndarray) -> np.ndarray:
+        """Resolve Lasso em paralelo (CPU com Joblib)."""
+        num_samples = Y_batch.shape[0]
+        
+        X_rec_list = Parallel(n_jobs=self.n_jobs)(
+            delayed(self.reconstruct_from_y)(Y_batch[i])
+            for i in range(num_samples)
+        )
+        
+        return np.vstack(X_rec_list)
+
+    def _compute_alphas_batch_gpu(self, Y_batch: np.ndarray) -> np.ndarray:
+        """Resolve Lasso em GPU (vetorizado quando possível)."""
+        if not self.use_gpu or cp is None:
+            return self._compute_alphas_batch_cpu(Y_batch)
+        
+        try:
+            num_samples = Y_batch.shape[0]
+            
+            # Transferir batch para GPU
+            Y_batch_gpu = cp.asarray(Y_batch, dtype=cp.float32)
+            
+            # Processar em GPU
+            X_rec_list = [
+                self._reconstruct_from_y_gpu(Y_batch_gpu[i])
+                for i in range(num_samples)
+            ]
+            
+            return np.vstack(X_rec_list)
+            
+        except Exception as e:
+            if self.verbose:
+                print(f"[GPU FALLBACK] Erro em GPU: {e}. Usando CPU.")
+            return self._compute_alphas_batch_cpu(Y_batch)
+
+    def _compute_alphas_batch(self, Y_batch: np.ndarray) -> np.ndarray:
+        """Wrapper que escolhe CPU ou GPU."""
+        if self.use_gpu:
+            return self._compute_alphas_batch_gpu(Y_batch)
+        else:
+            return self._compute_alphas_batch_cpu(Y_batch)
 
     def compute_alphas(
         self,
@@ -176,23 +289,29 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         alpha_lasso: Optional[float] = None,
         n_jobs: Optional[int] = None,
     ) -> np.ndarray:
-        """Compute alphas for all rows in X. Parallelizable with joblib."""
+        """Compute alphas - wrapper que escolhe CPU/GPU."""
         if n_jobs is None:
             n_jobs = self.n_jobs
+        
         num = X.shape[0]
-        # parallel
-        if n_jobs == 1:
-            alphas = np.vstack(
-                [self._compute_alpha_single(X.iloc[i], alpha_lasso) for i in range(num)]
-            )
+        
+        if self.use_gpu:
+            # GPU: processar tudo de uma vez
+            return self._compute_alphas_batch(X)
         else:
-            alphas = np.vstack(
-                Parallel(n_jobs=n_jobs)(
-                    delayed(self._compute_alpha_single)(X[i], alpha_lasso)
-                    for i in range(num)
+            # CPU: usar joblib
+            if n_jobs == 1:
+                alphas = np.vstack(
+                    [self._compute_alpha_single(X[i], alpha_lasso) for i in range(num)]
                 )
-            )
-        return alphas
+            else:
+                alphas = np.vstack(
+                    Parallel(n_jobs=n_jobs)(
+                        delayed(self._compute_alpha_single)(X[i], alpha_lasso)
+                        for i in range(num)
+                    )
+                )
+            return alphas
 
     # -------------------------
     # feature extractors
@@ -211,43 +330,61 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
     def extract_topk_idx_global(alphas: np.ndarray, K: int) -> np.ndarray:
         mean_abs = np.mean(np.abs(alphas), axis=0)
         topk_idx = np.argsort(mean_abs)[-K:]
-        return np.sort(topk_idx)  # retorna ordenado (bom para slicing)
+        return np.sort(topk_idx)
     
-    def reconstruct_from_y(
-        self,
-        y: np.ndarray,
-        method: str = "LASSO",
-    ) -> np.ndarray:
-        """
-        Reconstrói o sinal x a partir do sinal subamostrado y.
-        Replica exatamente o pipeline do cs_tunning.py
-        """
+    def reconstruct_from_y(self, y: np.ndarray, method: str = "LASSO") -> np.ndarray:
+        """Reconstrói sinal a partir de y (CPU)."""
         if self.A_norm is None or self.col_norms is None:
             raise ValueError("Estruturas CS não carregadas.")
 
-        # Resolver alpha
         if method == "OMP":
-            model = OrthogonalMatchingPursuit(
-                n_nonzero_coefs=int(self.lasso_alpha)
-            )
+            model = OrthogonalMatchingPursuit(n_nonzero_coefs=int(self.lasso_alpha))
             model.fit(self.A_norm, y)
         else:
-            model = Lasso(
-                alpha=self.lasso_alpha,
-                max_iter=10000,
-                fit_intercept=False
-            )
+            model = Lasso(alpha=self.lasso_alpha, max_iter=10000, fit_intercept=False)
             model.fit(self.A_norm, y)
 
         coef = model.coef_ / self.col_norms
-
-        # Reconstrução no domínio do tempo
-        alpha_I = coef[: self.N]
-        alpha_wave = coef[self.N :]
-
+        alpha_I = coef[:self.N]
+        alpha_wave = coef[self.N:]
         x_rec = alpha_I + self.Psi_wave.dot(alpha_wave)
 
         return x_rec
+
+    def _reconstruct_from_y_gpu(self, y_gpu) -> np.ndarray:
+        """Reconstrói sinal a partir de y (GPU)."""
+        if not self.use_gpu or cp is None:
+            y_np = cp.asnumpy(y_gpu) if hasattr(y_gpu, 'get') else y_gpu
+            return self.reconstruct_from_y(y_np)
+        
+        try:
+            # Solver Lasso em GPU
+            model = LassoGPU(
+                alpha=self.lasso_alpha,
+                max_iter=10000,
+                fit_intercept=False,
+                output_type='numpy'
+            )
+            model.fit(self.A_norm_gpu, y_gpu)
+            
+            # Desnormalizar
+            coef = model.coef_ / (cp.asnumpy(self.col_norms_gpu) + 1e-16)
+            alpha_I = coef[:self.N]
+            alpha_wave = coef[self.N:]
+            
+            # Reconstrução (usar CPU para Psi_wave se não estiver em GPU)
+            if self.Psi_wave_gpu is not None:
+                alpha_wave_gpu = cp.asarray(alpha_wave)
+                x_rec = alpha_I + cp.asnumpy(self.Psi_wave_gpu.dot(alpha_wave_gpu))
+            else:
+                x_rec = alpha_I + self.Psi_wave.dot(alpha_wave)
+            
+            return x_rec
+            
+        except Exception as e:
+            print(f"[ERROR GPU Reconstruct] {e}. Usando CPU.")
+            y_np = cp.asnumpy(y_gpu) if hasattr(y_gpu, 'get') else y_gpu
+            return self.reconstruct_from_y(y_np)
 
 
     # -------------------------
@@ -259,38 +396,18 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         alpha_lasso: Optional[float] = None,
         recompute_alphas: bool = False,
     ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
-        """
-        Extrai e retorna (X_features, alphas_optional)
-        technique: "energy", "topk", "pca", "pure_alpha", "RM"
-        """
+        """Extrai features baseado na técnica configurada."""
         if self.A_norm is None or self.col_norms is None:
-            raise ValueError(
-                "Estruturas CS não definidas: A_norm / col_norms faltando."
-            )
+            raise ValueError("Estruturas CS não definidas.")
 
-        if (
-            self.technique == "random_mesurements"
-        ):  # Usa o vetor de medidas aleatório antes da otimização
-            # if self._is_mask(self.Phi):
-            #     # Phi é mask booleana (N,)
-            #     return X[:, self.Phi], []
-
-            # elif self._is_index_array(self.Phi):
-            #     # Phi são índices (M,)
-            #     return X[:, self.Phi], []
-
-            # elif isinstance(self.Phi, np.ndarray) and self.Phi.ndim == 2:
-                # Phi é matriz M×N
+        if self.technique == "random_mesurements":
             return X.dot(self.Phi.T), []
 
-        # compute alphas (em memória)
         alphas = self.compute_alphas(X, alpha_lasso=alpha_lasso)
 
         if self.technique == "energy":
             if self.shapes is None:
-                raise ValueError(
-                    "shapes não está definido — necessário para energy per band."
-                )
+                raise ValueError("shapes não definido — necessário para energy per band.")
             alpha_wave = alphas[:, self.N :]
             features = np.vstack(
                 [
@@ -311,7 +428,6 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
             A_scaled = scaler.fit_transform(alphas)
             pca = PCA(n_components=min(self.pca_components, alphas.shape[1]))
             features = pca.fit_transform(A_scaled)
-            # opcionalmente armazenar pca para transform futuro (não feito aqui)
             return features, alphas
 
         elif self.technique == "pure_alpha":
@@ -321,9 +437,7 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
             return X, alphas
 
         else:
-            raise ValueError(
-                f"Technique '{self.technique}' desconhecida. Escolha energy/topk/pca/pure_alpha/random_mesurements."
-            )
+            raise ValueError(f"Technique '{self.technique}' desconhecida.")
 
     def save_feature_sets(
         self,
@@ -340,13 +454,13 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         df.to_csv(out_path, index=False)
         if self.verbose:
             print(f"[SAVE] Features salvas em: {out_path}")
+            print(f"[SAVE] Features salvas em: {out_path}")
 
     # -------------------------
     # sklearn API
     # -------------------------
     def fit(self, X: Optional[np.ndarray] = None, y: Optional[np.ndarray] = None):
-        # transformer não precisa ajustar nada para as estruturas CS se elas já foram carregadas
-        if self.A_norm is None or self.col_norms is None or self.Phi_ is None:
+        if self.A_norm is None or self.col_norms is None:
             try:
                 self.load_cs_structures(self.cs_structures_path)
             except Exception as e:
@@ -371,96 +485,68 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         return np.vstack(X_rec_list)
     
     def sliding_window_maker(self, Y_raw):
-        # Y_raw shape esperado: (N_amostras, 50)
-        
-        # 1. Cria as janelas. Resultado: (N_janelas, 50, 12)
+        """Cria janelas de Y_raw (N_amostras, 50) -> (N_janelas, 600)."""
         Y_windows = sliding_window_view(Y_raw, window_shape=self.window_size, axis=0)[::self.window_step]
-        
-        # 2. Transpõe para o formato (N_janelas, 12, 50)
-        Y_windows = Y_windows.transpose(0, 2, 1) 
-        
-        # 3. ACHATAMENTO DINÂMICO
-        # num_windows = total de janelas geradas
-        # -1 faz o numpy calcular automaticamente: 12 * 50 = 600
+        Y_windows = Y_windows.transpose(0, 2, 1)
         num_windows = Y_windows.shape[0]
-        Y_all = Y_windows.reshape(num_windows, -1) 
+        Y_all = Y_windows.reshape(num_windows, -1)
+        return Y_all
+
+    def reverse_windowing_optimized(self, windows_3d, original_rows):
+        """
+        Versão otimizada de reverse_windowing usando operações NumPy vetorizadas.
+        """
+        num_janelas, window_size, num_samples = windows_3d.shape
         
-        return Y_all # Retorna matriz (N_janelas, 600)
-    
+        reconstructed_full = np.zeros((original_rows, num_samples), dtype=np.float32)
+        counts = np.zeros((original_rows, 1), dtype=np.float32)
+        
+        # Pré-calcular índices
+        start_indices = np.arange(num_janelas) * self.window_step
+        
+        for i in range(num_janelas):
+            start_idx = start_indices[i]
+            end_idx = min(start_idx + window_size, original_rows)
+            
+            if start_idx < original_rows:
+                rows_to_fill = end_idx - start_idx
+                reconstructed_full[start_idx:end_idx] += windows_3d[i, :rows_to_fill, :]
+                counts[start_idx:end_idx] += 1
+        
+        counts = np.maximum(counts, 1)  # Evita div por zero
+        return reconstructed_full / counts
+
     def reverse_windowing(self, windows_3d, original_rows):
         """
         windows_3d: Array (N_janelas, 12, 100)
         original_rows: 17000 (quantidade de sinais originais)
         window_step: O passo usado no janelamento (ex: 6 para 50% de sobreposição)
         """
-        num_janelas, window_size, num_samples = windows_3d.shape
-        
-        # Matriz para acumular os valores reconstruídos
-        reconstructed_full = np.zeros((original_rows, num_samples))
-        # Matriz para contar quantas vezes cada linha foi preenchida (para tirar a média)
-        counts = np.zeros((original_rows, 1))
-        
-        for i in range(num_janelas):
-            start_idx = i * self.window_step
-            end_idx = start_idx + window_size
-            
-            # Caso a última janela ultrapasse o limite de 17000
-            if end_idx > original_rows:
-                overlap_end = original_rows - start_idx
-                reconstructed_full[start_idx:original_rows] += windows_3d[i, :overlap_end, :]
-                counts[start_idx:original_rows] += 1
-            else:
-                reconstructed_full[start_idx:end_idx] += windows_3d[i]
-                counts[start_idx:end_idx] += 1
-                
-        # Divide pelo número de ocorrências para obter a média suave
-        counts[counts == 0] = 1 # Evita divisão por zero
-        final_X = reconstructed_full / counts
-        
-        return final_X
+        return self.reverse_windowing_optimized(windows_3d, original_rows)
 
     def transform(self, Y: np.ndarray) -> np.ndarray:
         """
         Y: matriz de sinais subamostrados (n_samples x M)
         Retorna sinais reconstruídos (n_samples x N)
         """
-        
         Y = Y.to_numpy() if hasattr(Y, 'to_numpy') else Y
+        
+        if self.verbose:
+            mode = "GPU" if self.use_gpu else "CPU"
+            print(f"[TRANSFORM] Usando {mode} | Input shape: {Y.shape}")
     
         # 1. Janelamento
-        Y_batch = self.sliding_window_maker(Y_raw=Y)  # (N_janelas, 600)
+        Y_batch = self.sliding_window_maker(Y_raw=Y)
         
-        # 2. **VETORIZAÇÃO: Resolver Lasso para TODAS as janelas de uma vez**
-        X_rec = self._compute_alphas_batch(Y_batch)  # (N_janelas, N)
+        # 2. Resolver Lasso (CPU ou GPU)
+        X_rec = self._compute_alphas_batch(Y_batch)
         
-        # 3. Desjanelamento
+        # 3. Desjanelamento otimizado
         num_windows = X_rec.shape[0]
         X_rec_3d = X_rec.reshape(num_windows, 12, 100)
         X_resized = self.reverse_windowing(windows_3d=X_rec_3d, original_rows=Y.shape[0])
         
         return X_resized
-        
-        # X_rec = []
-        
-        # # Convertendo o Y de dataframe para array numpy
-        # Y = Y.to_numpy()
-        
-        # # Conversão de Y em batchs de 12 sinais tal qual o feito no código de tunnig
-        # Y_batch = self.sliding_window_maker(Y_raw=Y)
-        
-        # for i in range(Y_batch.shape[0]):
-        #     x_hat = self.reconstruct_from_y(
-        #         Y_batch[i],
-        #     )
-        #     X_rec.append(x_hat)
-            
-        # # Separar os sinais convertidos em distúrbios unitários novamente (dividir por 12)
-        # X_rec = np.array(X_rec)
-        # num_windows = X_rec.shape[0]
-        # X_rec_3d = X_rec.reshape(num_windows, 12, 100)
-        # X_resized = self.reverse_windowing(windows_3d=X_rec_3d, original_rows=Y.shape[0])
-
-        # return np.vstack(X_resized)
 
     def fit_transform(
         self, X: np.ndarray, y: Optional[np.ndarray] = None
