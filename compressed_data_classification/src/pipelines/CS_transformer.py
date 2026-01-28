@@ -423,10 +423,10 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         # Conversão de Y em batchs de 12 sinais tal qual o feito no código de tunnig
         Y_batch = self.sliding_window_maker(Y_raw=Y)
 
-        X_rec = Parallel(n_jobs=self.n_jobs)(
-            delayed(self.reconstruct_from_y)(Y_batch[i])
-            for i in range(Y_batch.shape[0])
-        )
+        X_rec = []
+        for i in range(Y_batch.shape[0]):
+            x_hat = self.reconstruct_from_y(Y_batch[i])
+            X_rec.append(x_hat)
 
         # Separar os sinais convertidos em distúrbios unitários novamente (dividir por 12)
         X_rec = np.array(X_rec)
