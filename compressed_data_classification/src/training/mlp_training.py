@@ -70,31 +70,31 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
     
     # Melhores parâmetros para cada técnica
     # Carregando o json com as melhores métricas
-    # try:
-    #     with open(results_path) as arq:
-    #         result_json_content = json.load(arq)
+    try:
+        with open("compressed_data_classification/src/models/best_models_result_without_sliding_window/mlp/results_reconstructed_2_dot_5.json") as arq:
+            result_json_content = json.load(arq)
         
-    #     best_param_grid = {
-    #         "mlp__hidden_layer_sizes": [(result_json_content['melhores_parametros']['mlp__hidden_layer_sizes'][0], result_json_content['melhores_parametros']['mlp__hidden_layer_sizes'][1])],
-    #         "mlp__activation": [result_json_content['melhores_parametros']['mlp__activation']],
-    #         "mlp__alpha": [result_json_content['melhores_parametros']['mlp__alpha']],
-    #         "mlp__early_stopping": [result_json_content['melhores_parametros']['mlp__early_stopping']],
-    #         "mlp__learning_rate": [result_json_content['melhores_parametros']['mlp__learning_rate']],
-    #         "mlp__learning_rate_init": [result_json_content['melhores_parametros']['mlp__learning_rate_init']],
-    #         "mlp__max_iter": [result_json_content['melhores_parametros']['mlp__max_iter']],
-    #         "mlp__solver": [result_json_content['melhores_parametros']['mlp__solver']],
-    #     }
-    # except:
-    total_combinations = len(ParameterGrid(param_grid))
-    print(f"Total de Combinações do Grid Search: {total_combinations}")
+        best_param_grid = {
+            "mlp__hidden_layer_sizes": [(result_json_content['melhores_parametros']['mlp__hidden_layer_sizes'][0], result_json_content['melhores_parametros']['mlp__hidden_layer_sizes'][1])],
+            "mlp__activation": [result_json_content['melhores_parametros']['mlp__activation']],
+            "mlp__alpha": [result_json_content['melhores_parametros']['mlp__alpha']],
+            "mlp__early_stopping": [result_json_content['melhores_parametros']['mlp__early_stopping']],
+            "mlp__learning_rate": [result_json_content['melhores_parametros']['mlp__learning_rate']],
+            "mlp__learning_rate_init": [result_json_content['melhores_parametros']['mlp__learning_rate_init']],
+            "mlp__max_iter": [result_json_content['melhores_parametros']['mlp__max_iter']],
+            "mlp__solver": [result_json_content['melhores_parametros']['mlp__solver']],
+        }
+    except:
+        total_combinations = len(ParameterGrid(param_grid))
+        print(f"Total de Combinações do Grid Search: {total_combinations}")
 
     # GridSearch com validação cruzada
     grid_search = GridSearchCV(
         estimator=pipeline,
-        param_grid=param_grid,
+        param_grid=best_param_grid,
         cv=10,
         scoring="accuracy", # <-- Alteração: Usando métrica de classificação
-        n_jobs=-1,
+        n_jobs=1,
         verbose=1,
     )
 

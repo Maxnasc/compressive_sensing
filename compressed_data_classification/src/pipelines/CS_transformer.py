@@ -2,6 +2,7 @@
 import os
 import pickle
 import json
+import time
 from typing import Optional, Tuple, List, Union
 from sklearn.base import clone
 
@@ -241,6 +242,8 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         """
         if self.A_norm is None or self.col_norms is None:
             raise ValueError("Estruturas CS não carregadas.")
+        
+        t0 = time.perf_counter()
 
         # # Resolver alpha
         # if method == "OMP":
@@ -252,14 +255,25 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         # model = clone(self.base_model)
             
         self.base_model.fit(self.A_norm, y)
+        t1 = time.perf_counter()
 
         coef = self.base_model.coef_ / self.col_norms
+        t2 = time.perf_counter()
 
         # Reconstrução no domínio do tempo
         alpha_I = coef[: self.N]
+        
         alpha_wave = coef[self.N :]
         x_rec = alpha_I + self.Psi_wave.dot(alpha_wave)
-
+        t3 = time.perf_counter()
+        
+        # Relatório de Tempos dentro da função de reconstrução
+        print(f"\n--- Profiling reconstruct_from_y ---")
+        print(f"fit do modelo: {t1-t0:.4f}s")
+        print(f"coeficientes:        {t2-t1:.4f}s")
+        print(f"Multiplicação matricial:  {t3-t2:.4f}s")
+        print(f"Total:  {t3-t0:.4f}s")
+        
         return x_rec
 
     # -------------------------
@@ -425,18 +439,22 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         Y: matriz de sinais subamostrados (n_samples x M)
         Retorna sinais reconstruídos (n_samples x N)
         """
+        t0 = time.perf_counter()
         X_rec = []
 
         # Convertendo o Y de dataframe para array numpy
         Y = Y.to_numpy()
+        t1 = time.perf_counter()
 
         # Conversão de Y em batchs de 12 sinais tal qual o feito no código de tunnig
         Y_batch = self.sliding_window_maker(Y_raw=Y)
+        t2 = time.perf_counter()
 
         X_rec = []
         for i in range(Y_batch.shape[0]):
             x_hat = self.reconstruct_from_y(Y_batch[i])
             X_rec.append(x_hat)
+        t3 = time.perf_counter()
 
         # Separar os sinais convertidos em distúrbios unitários novamente (dividir por 12)
         X_rec = np.array(X_rec)
@@ -445,6 +463,15 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         X_resized = self.reverse_windowing(
             windows_3d=X_rec_3d, original_rows=Y.shape[0]
         )
+        t4 = time.perf_counter()
+        
+        # Relatório de Tempos
+        print(f"\n--- Profiling Transform ---")
+        print(f"Conversão p/ Numpy: {t1-t0:.4f}s")
+        print(f"Janelamento:        {t2-t1:.4f}s")
+        print(f"Reconstrução (CS):  {t3-t2:.4f}s (Total de {Y_batch.shape[0]} janelas)")
+        print(f"Fusão/Reverse:      {t4-t3:.4f}s")
+        print(f"Tempo Total:        {t4-t0:.4f}s")
 
         return X_resized
 
