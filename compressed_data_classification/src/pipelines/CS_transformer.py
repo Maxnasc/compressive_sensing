@@ -231,6 +231,7 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         topk_idx = np.argsort(mean_abs)[-K:]
         return np.sort(topk_idx)  # retorna ordenado (bom para slicing)
 
+    @profile
     def reconstruct_from_y(
         self,
         y: np.ndarray,
@@ -267,12 +268,12 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         x_rec = alpha_I + self.Psi_wave.dot(alpha_wave)
         t3 = time.perf_counter()
         
-        # Relatório de Tempos dentro da função de reconstrução
-        print(f"\n--- Profiling reconstruct_from_y ---")
-        print(f"fit do modelo: {t1-t0:.4f}s")
-        print(f"coeficientes:        {t2-t1:.4f}s")
-        print(f"Multiplicação matricial:  {t3-t2:.4f}s")
-        print(f"Total:  {t3-t0:.4f}s")
+        # # Relatório de Tempos dentro da função de reconstrução
+        # print(f"\n--- Profiling reconstruct_from_y ---")
+        # print(f"fit do modelo: {t1-t0:.4f}s")
+        # print(f"coeficientes:        {t2-t1:.4f}s")
+        # print(f"Multiplicação matricial:  {t3-t2:.4f}s")
+        # print(f"Total:  {t3-t0:.4f}s")
         
         return x_rec
 

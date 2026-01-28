@@ -89,11 +89,11 @@ for technique in techniques:
         break
 
     # Montando tabela de comparação entre os modelos
-    df = pd.DataFrame([mlp_info, svm_rbf, qsvc])
+    # df = pd.DataFrame([mlp_info, svm_rbf, qsvc])
     # df = df.drop('melhores_parametros')
 
     # print(df)
-    df.to_excel(f'compressed_data_classification\src\models/best_models_result/resultados_modelos_{technique}.xlsx')
+    # df.to_excel(f'compressed_data_classification\src\models/best_models_result/resultados_modelos_{technique}.xlsx')
 
 
 end_global = time.time()
