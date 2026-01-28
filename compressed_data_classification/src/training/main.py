@@ -31,7 +31,7 @@ def import_and_split_dataset(data_path):
 
     # Variável alvo
     y = df['target']
-    X = df.drop(columns=['target', 'Unnamed: 0'])
+    X = df.drop(columns=['target'])
 
     # Encoder das labels
     label_encoder = LabelEncoder()
