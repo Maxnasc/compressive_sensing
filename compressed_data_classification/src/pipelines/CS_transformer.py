@@ -3,6 +3,7 @@ import os
 import pickle
 import json
 from typing import Optional, Tuple, List, Union
+from sklearn.base import clone
 
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
@@ -58,7 +59,7 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         self.window_step = None
         
         # modelo de otimização de alpha
-        self.model = None
+        self.base_model = None
 
         # runtime caches
         self._topk_idx = None
@@ -114,7 +115,7 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         # self.Psi_concat = data.get("Psi_concat", None)
         
         # Instanciando o Lasso para otimização
-        self.model = Lasso(alpha=self.lasso_alpha, max_iter=2000, fit_intercept=False)
+        self.base_model = Lasso(alpha=self.lasso_alpha, max_iter=2000, fit_intercept=False)
         
         if self.verbose:
             print(f"[LOAD] Estruturas CS carregadas de: {path}")
@@ -237,15 +238,17 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         #     model = OrthogonalMatchingPursuit(n_nonzero_coefs=int(self.lasso_alpha))
         #     model.fit(self.A_norm, y)
         # else:
+        
+        # clonando o modelo para evitar os erros de thread
+        model = clone(self.base_model)
             
-        self.model.fit(self.A_norm, y)
+        model.fit(self.A_norm, y)
 
-        coef = self.model.coef_ / self.col_norms
+        coef = model.coef_ / self.col_norms
 
         # Reconstrução no domínio do tempo
         alpha_I = coef[: self.N]
         alpha_wave = coef[self.N :]
-
         x_rec = alpha_I + self.Psi_wave.dot(alpha_wave)
 
         return x_rec

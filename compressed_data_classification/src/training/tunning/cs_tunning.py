@@ -23,8 +23,8 @@ if not os.path.exists(DATA_DIR):
 # Grade de Parâmetros Extensiva
 
 # Constantes de janelamento
-WINDOW_SIZE = 6 # Janela de 12 sinais
-WINDOW_STEP = 3 # Padrão de sobreposição (metade)
+WINDOW_SIZE = 12 # Janela de 12 sinais
+WINDOW_STEP = 6 # Padrão de sobreposição (metade)
 
 PARAM_GRID = {
     "SAMPLE_M": [30*WINDOW_SIZE, 40*WINDOW_SIZE, 50*WINDOW_SIZE],
