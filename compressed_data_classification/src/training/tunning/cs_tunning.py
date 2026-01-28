@@ -6,6 +6,7 @@ import pandas as pd
 import itertools
 import random
 import json
+from rich.status import Status
 from sklearn.linear_model import OrthogonalMatchingPursuit, Lasso
 from numpy.lib.stride_tricks import sliding_window_view
 
@@ -30,7 +31,7 @@ PARAM_GRID = {
     "SAMPLE_M": [30*WINDOW_SIZE, 40*WINDOW_SIZE, 50*WINDOW_SIZE],
     "WAVELET": ["db4", "db8", "sym4"],
     "WAVELET_LEVEL": [2, 3, 4],
-    "METHOD": ["OMP", "LASSO"],
+    "METHOD": ["OMP"],
 }
 OMP_K_CANDIDATES = [10, 20, 30, 40]
 LASSO_ALPHA_CANDIDATES = [1e-4, 1e-3, 1e-2]
@@ -286,7 +287,8 @@ if __name__ == "__main__":
     N_len = X_all.shape[1]
 
     # Estágio 1: Grid Search
-    results_df = grid_search_robust(X_all, N_len)
+    with Status(f"Buscando melhores parâmetros do otimizador", spinner="dots"):
+        results_df = grid_search_robust(X_all, N_len)
 
     print("\n--- TOP 10 MELHORES CONFIGURAÇÕES (Média de 5 sinais) ---")
     print(results_df[["METHOD", "SAMPLE_M", "WAVELET", "avg_psnr", "avg_cc"]].head(10))

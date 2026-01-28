@@ -91,7 +91,7 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
     # GridSearch com validação cruzada
     grid_search = GridSearchCV(
         estimator=pipeline,
-        param_grid=best_param_grid,
+        param_grid=param_grid,
         cv=10,
         scoring="accuracy", # <-- Alteração: Usando métrica de classificação
         n_jobs=1,
