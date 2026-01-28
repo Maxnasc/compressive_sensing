@@ -1,21 +1,21 @@
 {
   "config_parameters": {
-    "SAMPLE_M": 600,
-    "WAVELET": "sym4",
+    "SAMPLE_M": 300,
+    "WAVELET": "db8",
     "WAVELET_LEVEL": 4,
     "METHOD": "LASSO",
-    "PARAM_VAL": 0.0001,
-    "avg_psnr": 14.499013096689586,
-    "avg_cc": 0.9199917779173044,
-    "best_signal_idx": 2615,
-    "best_signal_cc": 0.9778882344727776,
-    "N": 1200,
-    "WINDOW_SIZE": 12,
-    "WINDOW_STEP": 6
+    "PARAM_VAL": 0.001,
+    "avg_psnr": 17.212608920980333,
+    "avg_cc": 0.956702912227297,
+    "best_signal_idx": 600,
+    "best_signal_cc": 0.9841703267814776,
+    "N": 600,
+    "WINDOW_SIZE": 6,
+    "WINDOW_STEP": 3
   },
   "performance_on_selected_signal": {
-    "mse_refined": 0.026374959424190044,
-    "psnr_refined": 15.788080163887809,
-    "cc_refined": 0.9711028994163787
+    "mse_refined": 0.0704381815176238,
+    "psnr_refined": 12.784007464394083,
+    "cc_refined": 0.9303916058323116
   }
 }
