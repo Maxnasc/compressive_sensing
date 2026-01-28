@@ -42,7 +42,7 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         self.pca_components = pca_components
         self.n_jobs = n_jobs
         self.verbose = verbose
-        
+
         # Controle de qual abordagem vai sar usada na trasnformação
         self.technique = technique
 
@@ -56,6 +56,9 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         self.shapes = None
         self.window_size = None
         self.window_step = None
+        
+        # modelo de otimização de alpha
+        self.model = None
 
         # runtime caches
         self._topk_idx = None
@@ -94,21 +97,25 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         """Carrega estruturas salvas anteriormente."""
         if path is None:
             path = self.cs_structures_path
-        with open(self.cs_metrics_path, 'r') as f:
+        with open(self.cs_metrics_path, "r") as f:
             metrics = json.load(f)
-        
+
         # with open(path, "rb") as f:
         #     data = pickle.load(f)
-        self.Phi = np.load(f'{path}/cs_best_result_Phi.npy')
-        self.Psi_wave = np.load(f'{path}/cs_best_result_Psi_w.npy')
-        self.A_norm = np.load(f'{path}/cs_best_result_A_norm.npy')
-        self.col_norms = np.load(f'{path}/cs_best_result_col_norms.npy')
+        self.Phi = np.load(f"{path}/cs_best_result_Phi.npy")
+        self.Psi_wave = np.load(f"{path}/cs_best_result_Psi_w.npy")
+        self.A_norm = np.load(f"{path}/cs_best_result_A_norm.npy")
+        self.col_norms = np.load(f"{path}/cs_best_result_col_norms.npy")
         self.N = metrics.get("config_parameters").get("N")
         self.lasso_alpha = metrics.get("config_parameters").get("PARAM_VAL")
         self.window_size = metrics.get("config_parameters").get("WINDOW_SIZE")
         self.window_step = metrics.get("config_parameters").get("WINDOW_STEP")
         # self.shapes = data.get("shapes")
         # self.Psi_concat = data.get("Psi_concat", None)
+        
+        # Instanciando o Lasso para otimização
+        self.model = Lasso(alpha=self.lasso_alpha, max_iter=2000, fit_intercept=False)
+        
         if self.verbose:
             print(f"[LOAD] Estruturas CS carregadas de: {path}")
 
@@ -212,7 +219,7 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         mean_abs = np.mean(np.abs(alphas), axis=0)
         topk_idx = np.argsort(mean_abs)[-K:]
         return np.sort(topk_idx)  # retorna ordenado (bom para slicing)
-    
+
     def reconstruct_from_y(
         self,
         y: np.ndarray,
@@ -225,21 +232,15 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         if self.A_norm is None or self.col_norms is None:
             raise ValueError("Estruturas CS não carregadas.")
 
-        # Resolver alpha
-        if method == "OMP":
-            model = OrthogonalMatchingPursuit(
-                n_nonzero_coefs=int(self.lasso_alpha)
-            )
-            model.fit(self.A_norm, y)
-        else:
-            model = Lasso(
-                alpha=self.lasso_alpha,
-                max_iter=2000,
-                fit_intercept=False
-            )
-            model.fit(self.A_norm, y)
+        # # Resolver alpha
+        # if method == "OMP":
+        #     model = OrthogonalMatchingPursuit(n_nonzero_coefs=int(self.lasso_alpha))
+        #     model.fit(self.A_norm, y)
+        # else:
+            
+        self.model.fit(self.A_norm, y)
 
-        coef = model.coef_ / self.col_norms
+        coef = self.model.coef_ / self.col_norms
 
         # Reconstrução no domínio do tempo
         alpha_I = coef[: self.N]
@@ -248,7 +249,6 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         x_rec = alpha_I + self.Psi_wave.dot(alpha_wave)
 
         return x_rec
-
 
     # -------------------------
     # export features
@@ -280,7 +280,7 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
             #     return X[:, self.Phi], []
 
             # elif isinstance(self.Phi, np.ndarray) and self.Phi.ndim == 2:
-                # Phi é matriz M×N
+            # Phi é matriz M×N
             return X.dot(self.Phi.T), []
 
         # compute alphas (em memória)
@@ -316,7 +316,7 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
 
         elif self.technique == "pure_alpha":
             return alphas, alphas
-        
+
         elif self.technique == "original_data":
             return X, alphas
 
@@ -353,24 +353,26 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
                 if self.verbose:
                     print(f"[INIT] Falha ao carregar cs_structures: {e}")
         return self
-    
+
     def sliding_window_maker(self, Y_raw):
         # Y_raw shape esperado: (N_amostras, 50)
-        
+
         # 1. Cria as janelas. Resultado: (N_janelas, 50, 12)
-        Y_windows = sliding_window_view(Y_raw, window_shape=self.window_size, axis=0)[::self.window_step]
-        
+        Y_windows = sliding_window_view(Y_raw, window_shape=self.window_size, axis=0)[
+            :: self.window_step
+        ]
+
         # 2. Transpõe para o formato (N_janelas, 12, 50)
-        Y_windows = Y_windows.transpose(0, 2, 1) 
-        
+        Y_windows = Y_windows.transpose(0, 2, 1)
+
         # 3. ACHATAMENTO DINÂMICO
         # num_windows = total de janelas geradas
         # -1 faz o numpy calcular automaticamente: 12 * 50 = 600
         num_windows = Y_windows.shape[0]
-        Y_all = Y_windows.reshape(num_windows, -1) 
-        
-        return Y_all # Retorna matriz (N_janelas, 600)
-    
+        Y_all = Y_windows.reshape(num_windows, -1)
+
+        return Y_all  # Retorna matriz (N_janelas, 600)
+
     def reverse_windowing(self, windows_3d, original_rows):
         """
         windows_3d: Array (N_janelas, 12, 100)
@@ -378,29 +380,31 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         window_step: O passo usado no janelamento (ex: 6 para 50% de sobreposição)
         """
         num_janelas, window_size, num_samples = windows_3d.shape
-        
+
         # Matriz para acumular os valores reconstruídos
         reconstructed_full = np.zeros((original_rows, num_samples))
         # Matriz para contar quantas vezes cada linha foi preenchida (para tirar a média)
         counts = np.zeros((original_rows, 1))
-        
+
         for i in range(num_janelas):
             start_idx = i * self.window_step
             end_idx = start_idx + window_size
-            
+
             # Caso a última janela ultrapasse o limite de 17000
             if end_idx > original_rows:
                 overlap_end = original_rows - start_idx
-                reconstructed_full[start_idx:original_rows] += windows_3d[i, :overlap_end, :]
+                reconstructed_full[start_idx:original_rows] += windows_3d[
+                    i, :overlap_end, :
+                ]
                 counts[start_idx:original_rows] += 1
             else:
                 reconstructed_full[start_idx:end_idx] += windows_3d[i]
                 counts[start_idx:end_idx] += 1
-                
+
         # Divide pelo número de ocorrências para obter a média suave
-        counts[counts == 0] = 1 # Evita divisão por zero
+        counts[counts == 0] = 1  # Evita divisão por zero
         final_X = reconstructed_full / counts
-        
+
         return final_X
 
     def transform(self, Y: np.ndarray) -> np.ndarray:
@@ -409,23 +413,25 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         Retorna sinais reconstruídos (n_samples x N)
         """
         X_rec = []
-        
+
         # Convertendo o Y de dataframe para array numpy
         Y = Y.to_numpy()
-        
+
         # Conversão de Y em batchs de 12 sinais tal qual o feito no código de tunnig
         Y_batch = self.sliding_window_maker(Y_raw=Y)
-        
+
         X_rec = Parallel(n_jobs=self.n_jobs)(
-            delayed(self.reconstruct_from_y)(Y_batch[i]) 
+            delayed(self.reconstruct_from_y)(Y_batch[i])
             for i in range(Y_batch.shape[0])
         )
-            
+
         # Separar os sinais convertidos em distúrbios unitários novamente (dividir por 12)
         X_rec = np.array(X_rec)
         num_windows = X_rec.shape[0]
         X_rec_3d = X_rec.reshape(num_windows, 12, 100)
-        X_resized = self.reverse_windowing(windows_3d=X_rec_3d, original_rows=Y.shape[0])
+        X_resized = self.reverse_windowing(
+            windows_3d=X_rec_3d, original_rows=Y.shape[0]
+        )
 
         return X_resized
 
