@@ -1,5 +1,5 @@
 [project]
-name = "compressive_sensing"
+name = "compressed_data_classification"
 version = "0.0.1"
 description = "Compressive sensing algorithm for fault identification on power trasnmission networks"
 authors = [
