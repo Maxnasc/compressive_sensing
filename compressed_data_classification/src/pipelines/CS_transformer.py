@@ -240,11 +240,11 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         # else:
         
         # clonando o modelo para evitar os erros de thread
-        model = clone(self.base_model)
+        # model = clone(self.base_model)
             
-        model.fit(self.A_norm, y)
+        self.base_model.fit(self.A_norm, y)
 
-        coef = model.coef_ / self.col_norms
+        coef = self.base_model.coef_ / self.col_norms
 
         # Reconstrução no domínio do tempo
         alpha_I = coef[: self.N]
