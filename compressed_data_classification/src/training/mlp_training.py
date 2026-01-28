@@ -42,7 +42,7 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
     
     # ✅ Aplicar CS_transformer APENAS se não for original_data ou random_mesurements
     if technique not in ['original_data', 'random_mesurements']:
-        pipeline_steps.insert(0, ('cs_transformer', CompressiveSensingTransformer(technique=technique, verbose=True)))
+        pipeline_steps.insert(0, ('cs_transformer', CompressiveSensingTransformer(technique=technique, verbose=True, n_jobs=1)))
     
     pipeline = Pipeline(pipeline_steps)
 

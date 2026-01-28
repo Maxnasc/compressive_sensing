@@ -16,6 +16,15 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.linear_model import OrthogonalMatchingPursuit, Lasso
 
+# Para rodar o profiler
+import builtins
+
+# Se o comando 'profile' não existir no ambiente global (rodando sem kernprof)
+# ele cria um decorador falso que não faz nada, apenas para não dar erro.
+if 'profile' not in builtins.__dict__:
+    def profile(func): 
+        return func
+    builtins.__dict__['profile'] = profile
 
 class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
     """
@@ -410,6 +419,7 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
 
         return final_X
 
+    @profile
     def transform(self, Y: np.ndarray) -> np.ndarray:
         """
         Y: matriz de sinais subamostrados (n_samples x M)

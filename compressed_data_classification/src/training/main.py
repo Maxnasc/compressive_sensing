@@ -31,7 +31,7 @@ def import_and_split_dataset(data_path):
 
     # Variável alvo
     y = df['target']
-    X = df.drop(columns=['target', 'Unnamed: 0'])
+    X = df.drop(columns=['target'])
 
     # Encoder das labels
     label_encoder = LabelEncoder()
@@ -76,12 +76,12 @@ for technique in techniques:
         # Modelos
         with Status(f"[bold green]Treinando MLP para {technique}...[/]", spinner="dots"):
             mlp_info = mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
-        print()
-        with Status(f"[bold green]Treinando SVM com RBF para {technique}...[/]", spinner="dots"):
-            svm_rbf = svm_with_rbf_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
-        print()
-        with Status(f"[bold green]Treinando SVM quadrático para {technique}...[/]", spinner="dots"):
-            qsvc = qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
+        # print()
+        # with Status(f"[bold green]Treinando SVM com RBF para {technique}...[/]", spinner="dots"):
+        #     svm_rbf = svm_with_rbf_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
+        # print()
+        # with Status(f"[bold green]Treinando SVM quadrático para {technique}...[/]", spinner="dots"):
+        #     qsvc = qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
         print()
     except  Exception as e:
         send_telegram_msg(f"Falha na execução do código -> ERRO: {e}")
