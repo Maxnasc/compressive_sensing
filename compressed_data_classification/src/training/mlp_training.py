@@ -46,10 +46,21 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
     
     pipeline = Pipeline(pipeline_steps)
 
+    # param_grid = {
+    #     "mlp__hidden_layer_sizes": [(20, 10), (10, 10), (15, 10)],
+    #     "mlp__activation": ["tanh", "relu", "identity", "logistic"],
+    #     "mlp__alpha": [0.01, 0.001, 0.0001],
+    #     "mlp__early_stopping": [True],
+    #     "mlp__learning_rate": ["constant"],
+    #     "mlp__learning_rate_init": [0.001],
+    #     "mlp__max_iter": [5000, 10000],
+    #     "mlp__solver": ["adam", "sgd"],
+    # }
+    
     param_grid = {
         "mlp__hidden_layer_sizes": [(20, 10), (10, 10), (15, 10)],
-        "mlp__activation": ["tanh", "relu", "identity", "logistic"],
-        "mlp__alpha": [0.01, 0.001, 0.0001],
+        "mlp__activation": ["relu", "logistic"],
+        "mlp__alpha": [0.01, 0.001],
         "mlp__early_stopping": [True],
         "mlp__learning_rate": ["constant"],
         "mlp__learning_rate_init": [0.001],

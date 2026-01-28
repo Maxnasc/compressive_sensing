@@ -64,7 +64,7 @@ def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
         # C: Controla o trade-off entre a margem suave e a classificação correta
         # Valores de 0.001 a 1000 para cobrir desde alta regularização até sobreajuste
         # 'qsvc__C': [0.1, 1, 10, 100, 1000],
-        'qsvc__C': [0.1, 1, 10, 100, 1000],
+        'qsvc__C': [1, 10, 100],
 
         # adicionar o probability para evitar o erro de predict_proba
         'qsvc__probability': [True]
