@@ -65,7 +65,7 @@ for technique in techniques:
     elif technique == 'reconstructed_2_dot_5':
         X_train, X_test, y_train, y_test, label_encoder, X = import_and_split_dataset('compressed_data_classification/data/processed/half_slice_per_4/data_sampled_2_dot_5_khz.csv')
     else:
-        X_train, X_test, y_train, y_test, label_encoder, X = import_and_split_dataset('compressed_data_classification\data\processed\half_slice_per_4\data_sampled_randomly.csv')
+        X_train, X_test, y_train, y_test, label_encoder, X = import_and_split_dataset('compressed_data_classification/data/processed/half_slice_per_4/data_sampled_randomly.csv')
     
     print(f"\n{'='*60}")
     print(f"Técnica: {technique}")
