@@ -30,6 +30,7 @@ def svm_with_rbf_training(X_train, y_train, X_test, y_test, X, technique, label_
     # É uma boa prática garantir que os diretórios existam
     base_path = Path("compressed_data_classification/src/models/best_models_result/svc_rbf")
     Path(base_path, "emissions").mkdir(parents=True, exist_ok=True)
+    Path(base_path, "plots").mkdir(parents=True, exist_ok=True)
     
     # Ajustando paths para o SVC (RBF)
     model_path = f"{base_path}/model_{technique}.pkl"
@@ -73,9 +74,17 @@ def svm_with_rbf_training(X_train, y_train, X_test, y_test, X, technique, label_
     # --- Hiperparâmetros para o SVC com Kernel RBF ---
     # C: Parâmetro de Regularização (inverso da força de regularização)
     # gamma: Coeficiente do kernel RBF (influencia a "alcance" de uma única amostra de treinamento)
+    # param_grid = {
+    #     "svc_rbf__C": [0.1, 1, 10], # Regularização
+    #     "svc_rbf__gamma": [0.001, 0.01, 0.1], # Kernel RBF
+    #     "svc_rbf__kernel": ["rbf"], # Focando no Kernel RBF
+    #     "svc_rbf__random_state": [42],
+    #     "svc_rbf__probability": [True], # Necessário para predict_proba
+    # }
+    
     param_grid = {
-        "svc_rbf__C": [0.1, 1, 10], # Regularização
-        "svc_rbf__gamma": [0.001, 0.01, 0.1], # Kernel RBF
+        "svc_rbf__C": [1], # Regularização
+        "svc_rbf__gamma": [0.01], # Kernel RBF
         "svc_rbf__kernel": ["rbf"], # Focando no Kernel RBF
         "svc_rbf__random_state": [42],
         "svc_rbf__probability": [True], # Necessário para predict_proba
@@ -95,8 +104,8 @@ def svm_with_rbf_training(X_train, y_train, X_test, y_test, X, technique, label_
     #         "svc_rbf__probability": [True], # Necessário para predict_proba
     #     }
     # except:
-    total_combinations = len(ParameterGrid(param_grid))
-    print(f"Total de Combinações do Grid Search: {total_combinations}")
+    # total_combinations = len(ParameterGrid(param_grid))
+    # print(f"Total de Combinações do Grid Search: {total_combinations}")
 
     # GridSearch com validação cruzada
     # Usando 'accuracy' como métrica principal para classificação multiclasse
@@ -153,7 +162,7 @@ def svm_with_rbf_training(X_train, y_train, X_test, y_test, X, technique, label_
         "roc_auc_score": round(roc_score, 4),
         "mse": round(mse, 4),
         "relatorio_classificacao": report, # Pode ser útil salvar o relatório completo
-        "n_combinations": total_combinations,
+        # "n_combinations": total_combinations,
         "best_mean_score": round(mean_test_score, 4),
         "std_best_score_k_fold": round(std_test_score, 4)
         # "mean_emission": round((emissions / total_combinations), 4) if total_combinations > 0 and total_combinations != None else 0,
@@ -224,7 +233,7 @@ if __name__ == '__main__':
 
     # Execução da função
     try:
-        results = svc_rbf_training(X_train, y_train, X_test, y_test, X)
+        results = svm_with_rbf_training(X_train, y_train, X_test, y_test, X)
         print("\nTreinamento concluído. Resultados salvos.")
     except Exception as e:
         print(f"\nOcorreu um erro durante a execução: {e}")

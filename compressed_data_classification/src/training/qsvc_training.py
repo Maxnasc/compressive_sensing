@@ -30,6 +30,7 @@ def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
     # É uma boa prática garantir que os diretórios existam
     base_path = Path("compressed_data_classification/src/models/best_models_result/qsvc")
     Path(base_path, "emissions").mkdir(parents=True, exist_ok=True)
+    Path(base_path, "plots").mkdir(parents=True, exist_ok=True)
     
     # Ajustando paths para o SVC (RBF)
     model_path = f"{base_path}/model_{technique}.pkl"
@@ -64,7 +65,8 @@ def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
         # C: Controla o trade-off entre a margem suave e a classificação correta
         # Valores de 0.001 a 1000 para cobrir desde alta regularização até sobreajuste
         # 'qsvc__C': [0.1, 1, 10, 100, 1000],
-        'qsvc__C': [1, 10, 100],
+        # 'qsvc__C': [1, 10, 100],
+        'qsvc__C': [10],
 
         # adicionar o probability para evitar o erro de predict_proba
         'qsvc__probability': [True]
@@ -99,8 +101,8 @@ def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
     #         "qsvc__probability": [True], # Necessário para predict_proba
     #     }
     # except:
-    total_combinations = len(ParameterGrid(param_grid))
-    print(f"Total de Combinações do Grid Search: {total_combinations}")
+    # total_combinations = len(ParameterGrid(param_grid))
+    # print(f"Total de Combinações do Grid Search: {total_combinations}")
 
     # GridSearch com validação cruzada
     # Usando 'accuracy' como métrica principal para classificação multiclasse
@@ -157,7 +159,7 @@ def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
         "roc_auc_score": round(roc_score, 4),
         "mse": round(mse, 4),
         "relatorio_classificacao": report, # Pode ser útil salvar o relatório completo
-        "n_combinations": total_combinations,
+        # "n_combinations": total_combinations,
         "best_mean_score": round(mean_test_score, 4),
         "std_best_score_k_fold": round(std_test_score, 4)
         # "mean_emission": round((emissions / total_combinations), 4) if total_combinations > 0 and total_combinations != None else 0,
