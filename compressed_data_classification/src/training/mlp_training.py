@@ -27,6 +27,7 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
     # É uma boa prática garantir que os diretórios existam
     base_path = Path("compressed_data_classification/src/models/best_models_result/mlp")
     Path(base_path, "emissions").mkdir(parents=True, exist_ok=True)
+    Path(base_path, "plots").mkdir(parents=True, exist_ok=True)
     
     # Ajustando paths para o SVC (RBF)
     model_path = f"compressed_data_classification/src/models/best_models_result/mlp/model_{technique}.pkl"
@@ -42,7 +43,7 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
     
     # ✅ Aplicar CS_transformer APENAS se não for original_data ou random_mesurements
     if technique not in ['original_data', 'random_mesurements']:
-        pipeline_steps.insert(0, ('cs_transformer', CompressiveSensingTransformer(technique=technique, verbose=True, n_jobs=1)))
+        pipeline_steps.insert(0, ('cs_transformer', CompressiveSensingTransformer(technique=technique, verbose=True, n_jobs=-1)))
     
     pipeline = Pipeline(pipeline_steps)
 
@@ -57,36 +58,47 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
     #     "mlp__solver": ["adam", "sgd"],
     # }
     
+    # param_grid = {
+    #     "mlp__hidden_layer_sizes": [(20, 10), (10, 10), (15, 10)],
+    #     "mlp__activation": ["relu", "logistic"],
+    #     "mlp__alpha": [0.01, 0.001],
+    #     "mlp__early_stopping": [True],
+    #     "mlp__learning_rate": ["constant"],
+    #     "mlp__learning_rate_init": [0.001],
+    #     "mlp__max_iter": [5000, 10000],
+    #     "mlp__solver": ["adam", "sgd"],
+    # }
+    
     param_grid = {
-        "mlp__hidden_layer_sizes": [(20, 10), (10, 10), (15, 10)],
-        "mlp__activation": ["relu", "logistic"],
-        "mlp__alpha": [0.01, 0.001],
+        "mlp__hidden_layer_sizes": [(20, 10)],
+        "mlp__activation": ["relu"],
+        "mlp__alpha": [0.01],
         "mlp__early_stopping": [True],
         "mlp__learning_rate": ["constant"],
         "mlp__learning_rate_init": [0.001],
-        "mlp__max_iter": [5000, 10000],
-        "mlp__solver": ["adam", "sgd"],
+        "mlp__max_iter": [5000],
+        "mlp__solver": ["sgd"],
     }
     
     # Melhores parâmetros para cada técnica
     # Carregando o json com as melhores métricas
-    try:
-        with open("compressed_data_classification/src/models/best_models_result_without_sliding_window/mlp/results_reconstructed_2_dot_5.json") as arq:
-            result_json_content = json.load(arq)
+    # try:
+    #     with open("compressed_data_classification/src/models/best_models_result_without_sliding_window/mlp/results_reconstructed_2_dot_5.json") as arq:
+    #         result_json_content = json.load(arq)
         
-        best_param_grid = {
-            "mlp__hidden_layer_sizes": [(result_json_content['melhores_parametros']['mlp__hidden_layer_sizes'][0], result_json_content['melhores_parametros']['mlp__hidden_layer_sizes'][1])],
-            "mlp__activation": [result_json_content['melhores_parametros']['mlp__activation']],
-            "mlp__alpha": [result_json_content['melhores_parametros']['mlp__alpha']],
-            "mlp__early_stopping": [result_json_content['melhores_parametros']['mlp__early_stopping']],
-            "mlp__learning_rate": [result_json_content['melhores_parametros']['mlp__learning_rate']],
-            "mlp__learning_rate_init": [result_json_content['melhores_parametros']['mlp__learning_rate_init']],
-            "mlp__max_iter": [result_json_content['melhores_parametros']['mlp__max_iter']],
-            "mlp__solver": [result_json_content['melhores_parametros']['mlp__solver']],
-        }
-    except:
-        total_combinations = len(ParameterGrid(param_grid))
-        print(f"Total de Combinações do Grid Search: {total_combinations}")
+    #     best_param_grid = {
+    #         "mlp__hidden_layer_sizes": [(result_json_content['melhores_parametros']['mlp__hidden_layer_sizes'][0], result_json_content['melhores_parametros']['mlp__hidden_layer_sizes'][1])],
+    #         "mlp__activation": [result_json_content['melhores_parametros']['mlp__activation']],
+    #         "mlp__alpha": [result_json_content['melhores_parametros']['mlp__alpha']],
+    #         "mlp__early_stopping": [result_json_content['melhores_parametros']['mlp__early_stopping']],
+    #         "mlp__learning_rate": [result_json_content['melhores_parametros']['mlp__learning_rate']],
+    #         "mlp__learning_rate_init": [result_json_content['melhores_parametros']['mlp__learning_rate_init']],
+    #         "mlp__max_iter": [result_json_content['melhores_parametros']['mlp__max_iter']],
+    #         "mlp__solver": [result_json_content['melhores_parametros']['mlp__solver']],
+    #     }
+    # except:
+    #     total_combinations = len(ParameterGrid(param_grid))
+    #     print(f"Total de Combinações do Grid Search: {total_combinations}")
 
     # GridSearch com validação cruzada
     grid_search = GridSearchCV(
@@ -94,7 +106,7 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
         param_grid=param_grid,
         cv=10,
         scoring="accuracy", # <-- Alteração: Usando métrica de classificação
-        n_jobs=1,
+        n_jobs=-1,
         verbose=1,
     )
 
@@ -141,7 +153,7 @@ def mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
         "roc_auc_score": round(roc_score, 4),
         "mse": round(mse, 4),
         "relatorio_classificacao": report, # Pode ser útil salvar o relatório completo
-        "n_combinations": total_combinations,
+        # "n_combinations": total_combinations,
         "best_mean_score": round(mean_test_score, 4),
         "std_best_score_k_fold": round(std_test_score, 4)
         # "mean_emission": round((emissions / total_combinations), 4) if total_combinations > 0 and total_combinations != None else 0,

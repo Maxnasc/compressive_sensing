@@ -468,12 +468,12 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         t4 = time.perf_counter()
         
         # Relatório de Tempos
-        print(f"\n--- Profiling Transform ---")
-        print(f"Conversão p/ Numpy: {t1-t0:.4f}s")
-        print(f"Janelamento:        {t2-t1:.4f}s")
-        print(f"Reconstrução (CS):  {t3-t2:.4f}s (Total de {Y_batch.shape[0]} janelas)")
-        print(f"Fusão/Reverse:      {t4-t3:.4f}s")
-        print(f"Tempo Total:        {t4-t0:.4f}s")
+        # print(f"\n--- Profiling Transform ---")
+        # print(f"Conversão p/ Numpy: {t1-t0:.4f}s")
+        # print(f"Janelamento:        {t2-t1:.4f}s")
+        # print(f"Reconstrução (CS):  {t3-t2:.4f}s (Total de {Y_batch.shape[0]} janelas)")
+        # print(f"Fusão/Reverse:      {t4-t3:.4f}s")
+        # print(f"Tempo Total:        {t4-t0:.4f}s")
 
         return X_resized
 

@@ -33,7 +33,7 @@ PARAM_GRID = {
     "WAVELET_LEVEL": [2, 3, 4],
     "METHOD": ["OMP"],
 }
-OMP_K_CANDIDATES = [10, 20, 30, 40]
+OMP_K_CANDIDATES = [10, 20, 30, 40, 50*WINDOW_SIZE]
 LASSO_ALPHA_CANDIDATES = [1e-4, 1e-3, 1e-2]
 REFINE_SPIKE_THRESHOLD_K = 4.5  # Sensibilidade para o refinamento MAD
 

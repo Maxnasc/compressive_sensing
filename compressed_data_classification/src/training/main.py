@@ -49,8 +49,8 @@ start_global = time.time()
 
 # Técnica de compressão de dados energy/topk/pca/pure_alpha/random_mesurements
 # techniques = ['energy','topk','pca','pure_alpha','random_mesurements', 'original_data']
-# techniques = ['original_data', 'reconstructed_2_dot_5', 'reconstructed_random', 'random_mesurements']
-techniques = ['reconstructed_2_dot_5', 'reconstructed_random', 'random_mesurements']
+techniques = ['original_data', 'reconstructed_2_dot_5', 'reconstructed_random', 'random_mesurements']
+# techniques = ['reconstructed_2_dot_5', 'reconstructed_random', 'random_mesurements']
 # techniques = ['reconstructed_2_dot_5']
 
 # Console para exibir status
@@ -61,11 +61,11 @@ console = Console()
 for technique in techniques:
     
     if technique == 'original_data':
-        X_train, X_test, y_train, y_test, label_encoder, X = import_and_split_dataset('compressed_data_classification/data/raw/data_half_slice_per_4.csv')
+        X_train, X_test, y_train, y_test, label_encoder, X = import_and_split_dataset('compressed_data_classification/data/raw/data.csv')
     elif technique == 'reconstructed_2_dot_5':
-        X_train, X_test, y_train, y_test, label_encoder, X = import_and_split_dataset('compressed_data_classification/data/processed/half_slice_per_4/data_sampled_2_dot_5_khz.csv')
+        X_train, X_test, y_train, y_test, label_encoder, X = import_and_split_dataset('compressed_data_classification/data/processed/data_sampled_2_dot_5_khz.csv')
     else:
-        X_train, X_test, y_train, y_test, label_encoder, X = import_and_split_dataset('compressed_data_classification/data/processed/half_slice_per_4/data_sampled_randomly.csv')
+        X_train, X_test, y_train, y_test, label_encoder, X = import_and_split_dataset('compressed_data_classification/data/processed/data_sampled_with_phi.csv')
     
     print(f"\n{'='*60}")
     print(f"Técnica: {technique}")
