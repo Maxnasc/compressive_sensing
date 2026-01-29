@@ -126,6 +126,7 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         
         # Instanciando o Lasso para otimização
         self.base_model = Lasso(alpha=self.lasso_alpha, max_iter=2000, fit_intercept=False)
+        # self.base_model = OrthogonalMatchingPursuit(n_nonzero_coefs=int(self.lasso_alpha))
         
         if self.verbose:
             print(f"[LOAD] Estruturas CS carregadas de: {path}")
@@ -467,12 +468,12 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         t4 = time.perf_counter()
         
         # Relatório de Tempos
-        print(f"\n--- Profiling Transform ---")
-        print(f"Conversão p/ Numpy: {t1-t0:.4f}s")
-        print(f"Janelamento:        {t2-t1:.4f}s")
-        print(f"Reconstrução (CS):  {t3-t2:.4f}s (Total de {Y_batch.shape[0]} janelas)")
-        print(f"Fusão/Reverse:      {t4-t3:.4f}s")
-        print(f"Tempo Total:        {t4-t0:.4f}s")
+        # print(f"\n--- Profiling Transform ---")
+        # print(f"Conversão p/ Numpy: {t1-t0:.4f}s")
+        # print(f"Janelamento:        {t2-t1:.4f}s")
+        # print(f"Reconstrução (CS):  {t3-t2:.4f}s (Total de {Y_batch.shape[0]} janelas)")
+        # print(f"Fusão/Reverse:      {t4-t3:.4f}s")
+        # print(f"Tempo Total:        {t4-t0:.4f}s")
 
         return X_resized
 

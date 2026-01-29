@@ -49,8 +49,8 @@ start_global = time.time()
 
 # Técnica de compressão de dados energy/topk/pca/pure_alpha/random_mesurements
 # techniques = ['energy','topk','pca','pure_alpha','random_mesurements', 'original_data']
-# techniques = ['original_data', 'reconstructed_2_dot_5', 'reconstructed_random', 'random_mesurements']
-techniques = ['reconstructed_2_dot_5', 'reconstructed_random', 'random_mesurements']
+techniques = ['original_data', 'reconstructed_2_dot_5', 'reconstructed_random', 'random_mesurements']
+# techniques = ['reconstructed_2_dot_5', 'reconstructed_random', 'random_mesurements']
 # techniques = ['reconstructed_2_dot_5']
 
 # Console para exibir status
@@ -61,11 +61,11 @@ console = Console()
 for technique in techniques:
     
     if technique == 'original_data':
-        X_train, X_test, y_train, y_test, label_encoder, X = import_and_split_dataset('compressed_data_classification/data/raw/data_half_slice_per_4.csv')
+        X_train, X_test, y_train, y_test, label_encoder, X = import_and_split_dataset('compressed_data_classification/data/raw/data.csv')
     elif technique == 'reconstructed_2_dot_5':
-        X_train, X_test, y_train, y_test, label_encoder, X = import_and_split_dataset('compressed_data_classification/data/processed/half_slice_per_4/data_sampled_2_dot_5_khz.csv')
+        X_train, X_test, y_train, y_test, label_encoder, X = import_and_split_dataset('compressed_data_classification/data/processed/data_sampled_2_dot_5_khz.csv')
     else:
-        X_train, X_test, y_train, y_test, label_encoder, X = import_and_split_dataset('compressed_data_classification/data/processed/half_slice_per_4/data_sampled_randomly.csv')
+        X_train, X_test, y_train, y_test, label_encoder, X = import_and_split_dataset('compressed_data_classification/data/processed/data_sampled_with_phi.csv')
     
     print(f"\n{'='*60}")
     print(f"Técnica: {technique}")
@@ -76,12 +76,12 @@ for technique in techniques:
         # Modelos
         with Status(f"[bold green]Treinando MLP para {technique}...[/]", spinner="dots"):
             mlp_info = mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
-        # print()
-        # with Status(f"[bold green]Treinando SVM com RBF para {technique}...[/]", spinner="dots"):
-        #     svm_rbf = svm_with_rbf_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
-        # print()
-        # with Status(f"[bold green]Treinando SVM quadrático para {technique}...[/]", spinner="dots"):
-        #     qsvc = qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
+        print()
+        with Status(f"[bold green]Treinando SVM com RBF para {technique}...[/]", spinner="dots"):
+            svm_rbf = svm_with_rbf_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
+        print()
+        with Status(f"[bold green]Treinando SVM quadrático para {technique}...[/]", spinner="dots"):
+            qsvc = qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
         print()
     except  Exception as e:
         send_telegram_msg(f"Falha na execução do código -> ERRO: {e}")
@@ -89,11 +89,11 @@ for technique in techniques:
         break
 
     # Montando tabela de comparação entre os modelos
-    # df = pd.DataFrame([mlp_info, svm_rbf, qsvc])
+    df = pd.DataFrame([mlp_info, svm_rbf, qsvc])
     # df = df.drop('melhores_parametros')
 
     # print(df)
-    # df.to_excel(f'compressed_data_classification\src\models/best_models_result/resultados_modelos_{technique}.xlsx')
+    df.to_excel(f'compressed_data_classification\src\models/best_models_result/resultados_modelos_{technique}.xlsx')
 
 
 end_global = time.time()
@@ -101,7 +101,7 @@ duration = end_global-start_global
 
 minutes, seconds = divmod(duration, 60)
 
-send_telegram_msg(f"🚀 Treinamento dos modelos usando compressive sensing terminado!\n⏱️ Tempo total: {int(minutes)}m {seconds:.2f}s")
+send_telegram_msg(f"🚀 Treinamento dos modelos usando compressive sensing OMP terminado!\n⏱️ Tempo total: {int(minutes)}m {seconds:.2f}s")
 
 # Mostrar todos os gráficos
-# plt.show()
+# plt.show() 
