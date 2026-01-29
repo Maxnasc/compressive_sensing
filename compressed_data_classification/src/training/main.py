@@ -101,7 +101,7 @@ duration = end_global-start_global
 
 minutes, seconds = divmod(duration, 60)
 
-send_telegram_msg(f"🚀 Treinamento dos modelos usando compressive sensing terminado!\n⏱️ Tempo total: {int(minutes)}m {seconds:.2f}s")
+send_telegram_msg(f"🚀 Treinamento dos modelos usando compressive sensing OMP terminado!\n⏱️ Tempo total: {int(minutes)}m {seconds:.2f}s")
 
 # Mostrar todos os gráficos
-# plt.show()
+# plt.show() 
