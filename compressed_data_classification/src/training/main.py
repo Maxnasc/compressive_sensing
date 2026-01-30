@@ -49,9 +49,9 @@ start_global = time.time()
 
 # Técnica de compressão de dados energy/topk/pca/pure_alpha/random_mesurements
 # techniques = ['energy','topk','pca','pure_alpha','random_mesurements', 'original_data']
-techniques = ['original_data', 'reconstructed_2_dot_5', 'reconstructed_random', 'random_mesurements']
+# techniques = ['original_data', 'reconstructed_2_dot_5', 'reconstructed_random', 'random_mesurements']
 # techniques = ['reconstructed_2_dot_5', 'reconstructed_random', 'random_mesurements']
-# techniques = ['reconstructed_2_dot_5']
+techniques = ['original_data']
 
 # Console para exibir status
 console = Console()

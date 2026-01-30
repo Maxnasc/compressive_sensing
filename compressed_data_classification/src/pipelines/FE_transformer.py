@@ -33,11 +33,12 @@ class XPQRSFeatureExtractor(BaseEstimator, TransformerMixin):
         
         # 3. Mobility (Mob)
         # Mobility = sqrt(Var(du/dt) / Var(u))
-        var_u = np.var(u)
-        # Calcula a derivada temporal interna para a mobilidade
-        du_dt = np.diff(u)
-        var_du_dt = np.var(du_dt)
-        mob = np.sqrt(var_du_dt / (var_u + epsilon))
+        if len(u) > 1:
+            var_u = np.var(u)
+            du_dt = np.diff(u)
+            mob = np.sqrt(np.var(du_dt) / (var_u + epsilon))
+        else:
+            mob = 0.0
         
         return [le, se, mob]
 

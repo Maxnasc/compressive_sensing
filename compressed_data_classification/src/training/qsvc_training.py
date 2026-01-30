@@ -104,7 +104,7 @@ def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
         estimator=pipeline,
         param_grid=param_grid,
         cv=10,
-        scoring="accuracy", # <-- Alteração: Usando métrica de classificação
+        scoring="roc_auc_ovr", # <-- Alteração: Usando métrica de classificação
         n_jobs=-1,
         verbose=1,
     )
