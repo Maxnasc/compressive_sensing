@@ -126,7 +126,9 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         
         # Instanciando o Lasso para otimização
         # self.base_model = Lasso(alpha=self.lasso_alpha, max_iter=2000, fit_intercept=False)
-        self.base_model = OrthogonalMatchingPursuit(n_nonzero_coefs=int(self.lasso_alpha))
+        # self.base_model = OrthogonalMatchingPursuit(n_nonzero_coefs=int(self.lasso_alpha))
+        k_value = max(1, int(self.lasso_alpha)) 
+        self.base_model = OrthogonalMatchingPursuit(n_nonzero_coefs=k_value)
         
         if self.verbose:
             print(f"[LOAD] Estruturas CS carregadas de: {path}")
