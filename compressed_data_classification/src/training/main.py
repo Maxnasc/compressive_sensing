@@ -30,6 +30,7 @@ def import_and_split_dataset(data_path):
     # df = df.drop(columns=['Unnamed: 0', 'F3_norm'])
 
     # Variável alvo
+
     y = df['target']
     X = df.drop(columns=['target'])
 
