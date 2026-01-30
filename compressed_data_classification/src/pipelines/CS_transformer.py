@@ -38,8 +38,8 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
     def __init__(
         self,
         technique: str = "energy",
-        cs_structures_path: str = "compressed_data_classification/src/cs/cs_constants",
-        cs_metrics_path: str = "compressed_data_classification/src/cs/results/metrics/best_cs_tune_metrics.json",
+        cs_structures_path: str = "compressed_data_classification/src/cs_omp/cs_constants",
+        cs_metrics_path: str = "compressed_data_classification/src/cs_omp/results/metrics/best_cs_tune_metrics.json",
         lasso_alpha: float = 1e-4,
         K_topk: int = 40,
         pca_components: int = 40,
@@ -125,8 +125,8 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         # self.Psi_concat = data.get("Psi_concat", None)
         
         # Instanciando o Lasso para otimização
-        self.base_model = Lasso(alpha=self.lasso_alpha, max_iter=2000, fit_intercept=False)
-        # self.base_model = OrthogonalMatchingPursuit(n_nonzero_coefs=int(self.lasso_alpha))
+        # self.base_model = Lasso(alpha=self.lasso_alpha, max_iter=2000, fit_intercept=False)
+        self.base_model = OrthogonalMatchingPursuit(n_nonzero_coefs=int(self.lasso_alpha))
         
         if self.verbose:
             print(f"[LOAD] Estruturas CS carregadas de: {path}")

@@ -27,7 +27,7 @@ WINDOW_STEP = 6
 
 # Grade de Parâmetros Expandida para abranger as 17 classes
 PARAM_GRID = {
-    "SAMPLE_M": [40*WINDOW_SIZE, 60*WINDOW_SIZE], 
+    "SAMPLE_M": [40*WINDOW_SIZE, 50*WINDOW_SIZE], 
     "BASIS": ["wavelet", "dct", "hybrid"],        
     "WAVELET": ["db4", "sym4"],
     "WAVELET_LEVEL": [3],
@@ -200,8 +200,9 @@ if __name__ == "__main__":
 
     # Visualização
     plt.figure(figsize=(12, 6))
-    plt.plot(sinal_exemplo, label="Original (Janela Mista)", alpha=0.4, color='black', ls='--')
-    plt.plot(x_rec, label="Reconstruído", color='blue', lw=1.5)
+    plt.plot(sinal_exemplo, label="Original (Window)", alpha=0.4, color='black', ls='--')
+    plt.plot(x_rec, label="Reconstructed", color='blue', lw=1.5)
+    plt.scatter(m_idx, y_val, color="red", s=40, label="Samples", zorder=5)
     plt.title(f"Reconstrução CS - Método: {chosen_config['METHOD']} | Base: {chosen_config['BASIS']}")
     plt.legend()
     plt.show()
