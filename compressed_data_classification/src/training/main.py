@@ -74,12 +74,12 @@ for technique in techniques:
     
     try:
         # Modelos
-        with Status(f"[bold green]Treinando MLP para {technique}...[/]", spinner="dots"):
-            mlp_info = mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
-        print()
-        with Status(f"[bold green]Treinando SVM com RBF para {technique}...[/]", spinner="dots"):
-            svm_rbf = svm_with_rbf_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
-        print()
+        # with Status(f"[bold green]Treinando MLP para {technique}...[/]", spinner="dots"):
+        #     mlp_info = mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
+        # print()
+        # with Status(f"[bold green]Treinando SVM com RBF para {technique}...[/]", spinner="dots"):
+        #     svm_rbf = svm_with_rbf_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
+        # print()
         with Status(f"[bold green]Treinando SVM quadrático para {technique}...[/]", spinner="dots"):
             qsvc = qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
         print()
