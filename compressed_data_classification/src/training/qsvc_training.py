@@ -28,7 +28,7 @@ def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
 
     # --- Configurações de Paths ---
     # É uma boa prática garantir que os diretórios existam
-    base_path = Path("compressed_data_classification/src/models/best_models_result/qsvc")
+    base_path = Path("compressed_data_classification/src/models/best_models_result/just_qsvc")
     Path(base_path, "emissions").mkdir(parents=True, exist_ok=True)
     Path(base_path, "plots").mkdir(parents=True, exist_ok=True)
     
@@ -69,7 +69,7 @@ def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
         # 'qsvc__C': [10],
 
         # adicionar o probability para evitar o erro de predict_proba
-        'qsvc__probability': [True]
+        'qsvc__probability': [True],
         
         # # Kernel fixo em polinomial de grau 2 conforme o artigo
         # 'qsvc__kernel': ['poly'],
@@ -84,7 +84,7 @@ def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
         # 'qsvc__coef0': [0, 1, 5],
         
         # # Decision_function_shape: 'ovr' (one-vs-rest) é o padrão para multiclasse
-        # 'qsvc__decision_function_shape': ['ovr']
+        'qsvc__decision_function_shape': ['ovr']
     }
     
     # Melhores parâmetros para cada técnica
