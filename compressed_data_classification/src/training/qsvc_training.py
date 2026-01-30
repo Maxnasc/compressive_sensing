@@ -49,7 +49,7 @@ def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
     # Criando o pipeline
     pipeline_steps = [
         ('feature_extraction', XPQRSFeatureExtractor()),
-        ('qsvc', SVC(kernel='poly', degree=2))
+        ('qsvc', SVC())
     ]
     
     # ✅ Aplicar CS_transformer APENAS se não for original_data ou random_mesurements
@@ -61,7 +61,7 @@ def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
     param_grid = {
         # C (ou K no artigo): Fator de penalidade. 
         # O padrão do MATLAB/Artigo é 1.
-        'qsvc__C': [1], 
+        'qsvc__C': [1000], 
 
         # Habilita probabilidades para evitar erro no predict_proba
         'qsvc__probability': [True],
@@ -104,7 +104,7 @@ def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
         estimator=pipeline,
         param_grid=param_grid,
         cv=10,
-        scoring="roc_auc_ovr", # <-- Alteração: Usando métrica de classificação
+        scoring="balanced_accuracy", # <-- Alteração: Usando métrica de classificação / roc_auc_ovr
         n_jobs=-1,
         verbose=1,
     )
