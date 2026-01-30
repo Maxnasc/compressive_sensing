@@ -28,7 +28,7 @@ def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
 
     # --- Configurações de Paths ---
     # É uma boa prática garantir que os diretórios existam
-    base_path = Path("compressed_data_classification/src/models/best_models_result/just_qsvc")
+    base_path = Path("compressed_data_classification/src/models/best_qsvc_results")
     Path(base_path, "emissions").mkdir(parents=True, exist_ok=True)
     Path(base_path, "plots").mkdir(parents=True, exist_ok=True)
     
@@ -58,33 +58,27 @@ def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
     
     pipeline = Pipeline(pipeline_steps)
     
-    # --- Hiperparâmetros para o SVC com Kernel RBF ---
-    # C: Parâmetro de Regularização (inverso da força de regularização)
-    # gamma: Coeficiente do kernel RBF (influencia a "alcance" de uma única amostra de treinamento)
     param_grid = {
-        # C: Controla o trade-off entre a margem suave e a classificação correta
-        # Valores de 0.001 a 1000 para cobrir desde alta regularização até sobreajuste
-        # 'qsvc__C': [0.1, 1, 10, 100, 1000],
-        # 'qsvc__C': [1, 10, 100],
-        # 'qsvc__C': [10],
+        # C (ou K no artigo): Fator de penalidade. 
+        # O padrão do MATLAB/Artigo é 1.
+        'qsvc__C': [1], 
 
-        # adicionar o probability para evitar o erro de predict_proba
+        # Habilita probabilidades para evitar erro no predict_proba
         'qsvc__probability': [True],
         
-        # # Kernel fixo em polinomial de grau 2 conforme o artigo
-        # 'qsvc__kernel': ['poly'],
-        # 'qsvc__degree': [2],
+        # Kernel fixo em polinomial de grau 2 conforme o artigo
+        'qsvc__kernel': ['poly'],
+        'qsvc__degree': [2],
         
-        # # Gamma: Define a influência de um único exemplo de treinamento
-        # # 'scale' e 'auto' são bons pontos de partida, mas valores manuais refinam o modelo
-        # 'qsvc__gamma': ['scale', 'auto', 0.01, 0.1, 1],
+        # Gamma: 'scale' é a abordagem moderna recomendada (1 / (n_features * X.var()))
+        'qsvc__gamma': ['scale'],
         
-        # # Coef0: O parâmetro 'r' na fórmula (gamma*<x,x'> + r)^d. 
-        # # É crucial para kernels polinomiais para controlar a influência de termos de alta ordem
-        # 'qsvc__coef0': [0, 1, 5],
+        # Coef0: O parâmetro 'r' na fórmula (gamma*<x,x'> + r)^d. 
+        # Em kernels quadráticos do MATLAB, o padrão é 1.
+        'qsvc__coef0': [1],
         
-        # # Decision_function_shape: 'ovr' (one-vs-rest) é o padrão para multiclasse
-        'qsvc__decision_function_shape': ['ovr']
+        # O MATLAB usa One-vs-One (OvO) por padrão para SVM multiclasse
+        'qsvc__decision_function_shape': ['ovo']
     }
     
     # Melhores parâmetros para cada técnica
