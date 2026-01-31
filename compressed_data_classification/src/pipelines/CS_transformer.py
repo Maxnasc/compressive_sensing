@@ -5,6 +5,7 @@ import json
 import time
 from typing import Optional, Tuple, List, Union
 from sklearn.base import clone
+from rich.status import Status
 
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
@@ -125,8 +126,9 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         # self.Psi_concat = data.get("Psi_concat", None)
         
         # Instanciando o Lasso para otimização
-        self.base_model = Lasso(alpha=self.lasso_alpha, max_iter=2000, fit_intercept=False)
-        # self.base_model = OrthogonalMatchingPursuit(n_nonzero_coefs=int(self.lasso_alpha))
+        # self.base_model = Lasso(alpha=self.lasso_alpha, max_iter=2000, fit_intercept=False)
+        k_value = max(1, int(self.lasso_alpha)) 
+        self.model = OrthogonalMatchingPursuit(n_nonzero_coefs=k_value)
         
         if self.verbose:
             print(f"[LOAD] Estruturas CS carregadas de: {path}")
@@ -453,9 +455,10 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         t2 = time.perf_counter()
 
         X_rec = []
-        for i in range(Y_batch.shape[0]):
-            x_hat = self.reconstruct_from_y(Y_batch[i])
-            X_rec.append(x_hat)
+        with Status("Reconstruindo os sinais em lotes", spinner="dots"):
+            for i in range(Y_batch.shape[0]):
+                x_hat = self.reconstruct_from_y(Y_batch[i])
+                X_rec.append(x_hat)
         t3 = time.perf_counter()
 
         # Separar os sinais convertidos em distúrbios unitários novamente (dividir por 12)
@@ -468,12 +471,12 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         t4 = time.perf_counter()
         
         # Relatório de Tempos
-        # print(f"\n--- Profiling Transform ---")
-        # print(f"Conversão p/ Numpy: {t1-t0:.4f}s")
-        # print(f"Janelamento:        {t2-t1:.4f}s")
-        # print(f"Reconstrução (CS):  {t3-t2:.4f}s (Total de {Y_batch.shape[0]} janelas)")
-        # print(f"Fusão/Reverse:      {t4-t3:.4f}s")
-        # print(f"Tempo Total:        {t4-t0:.4f}s")
+        print(f"\n--- Profiling Transform ---")
+        print(f"Conversão p/ Numpy: {t1-t0:.4f}s")
+        print(f"Janelamento:        {t2-t1:.4f}s")
+        print(f"Reconstrução (CS):  {t3-t2:.4f}s (Total de {Y_batch.shape[0]} janelas)")
+        print(f"Fusão/Reverse:      {t4-t3:.4f}s")
+        print(f"Tempo Total:        {t4-t0:.4f}s")
 
         return X_resized
 

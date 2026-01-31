@@ -61,7 +61,7 @@ def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
     param_grid = {
         # C (ou K no artigo): Fator de penalidade. 
         # O padrão do MATLAB/Artigo é 1.
-        'qsvc__C': [1], 
+        'qsvc__C': [1000], 
 
         # Habilita probabilidades para evitar erro no predict_proba
         'qsvc__probability': [True],
@@ -78,7 +78,9 @@ def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
         'qsvc__coef0': [1],
         
         # O MATLAB usa One-vs-One (OvO) por padrão para SVM multiclasse
-        'qsvc__decision_function_shape': ['ovo']
+        'qsvc__decision_function_shape': ['ovo'],
+        
+        'qsvc__verbose': [True]
     }
     
     # Melhores parâmetros para cada técnica

@@ -22,6 +22,7 @@ if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
 
 # Constantes de janelamento
+
 WINDOW_SIZE = 12 
 WINDOW_STEP = 6 
 
