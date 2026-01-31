@@ -1,6 +1,15 @@
 import numpy as np
 import pandas as pd
+import time
 from sklearn.base import BaseEstimator, TransformerMixin
+
+# Para rodar o profiler
+import builtins
+
+if 'profile' not in builtins.__dict__:
+    def profile(func): 
+        return func
+    builtins.__dict__['profile'] = profile
 
 class XPQRSFeatureExtractor(BaseEstimator, TransformerMixin):
     def __init__(self):
@@ -42,10 +51,12 @@ class XPQRSFeatureExtractor(BaseEstimator, TransformerMixin):
         
         return [le, se, mob]
 
+    @profile
     def transform(self, X):
         """
         Processa cada sinal para gerar o vetor de 15 características[cite: 160, 161].
         """
+        t0 = time.perf_counter()
         # Verificando se X é um dicionário ou um array numpy
         if type(X) == np.ndarray: # <- Veio do CS
             # Converte para dataframe
@@ -63,6 +74,8 @@ class XPQRSFeatureExtractor(BaseEstimator, TransformerMixin):
             
             features_list.append(sig_features)
             
+        t1 = time.perf_counter()
+        print(f"Tempo total de transformação para {X.shape[0]}: {t1-t0:.4f}s")
         return np.array(features_list)
 
     def fit(self, X, y=None):

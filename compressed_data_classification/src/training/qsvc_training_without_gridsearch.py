@@ -17,12 +17,13 @@ from compressed_data_classification.src.pipelines.CS_transformer import Compress
 from compressed_data_classification.src.pipelines.FE_transformer import XPQRSFeatureExtractor
 from codecarbon import OfflineEmissionsTracker
 from sklearn.pipeline import Pipeline
+from sklearn.model_selection import cross_validate
 
 # --- A função principal foi renomeada e os parâmetros internos ajustados ---
 
-def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
+def qsvc_training_without_gridsearch(X_train, y_train, X_test, y_test, X, technique, label_encoder):
     """
-    Treina e avalia um classificador SVM com Kernel RBF (SVC) 
+    Treina e avalia um classificador SVM com Kernel RBF (SVC)
     usando Grid Search para um problema de classificação multiclasse.
     """
 
@@ -46,102 +47,66 @@ def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
     #     log_level='critical'
     # )
          
-    # Criando o pipeline
-    pipeline_steps = [
-        ('feature_extraction', XPQRSFeatureExtractor()),
-        ('qsvc', SVC())
-    ]
-    
-    # ✅ Aplicar CS_transformer APENAS se não for original_data ou random_mesurements
-    if technique not in ['original_data', 'random_mesurements']:
-        pipeline_steps.insert(0, ('cs_transformer', CompressiveSensingTransformer(technique=technique, verbose=True)))
-    
-    pipeline = Pipeline(pipeline_steps)
-    
-    param_grid = {
-        # C (ou K no artigo): Fator de penalidade. 
-        # O padrão do MATLAB/Artigo é 1.
-        'qsvc__C': [1000], 
+    from sklearn.ensemble import BaggingClassifier
 
-        # Habilita probabilidades para evitar erro no predict_proba
-        'qsvc__probability': [True],
-        
-        # Kernel fixo em polinomial de grau 2 conforme o artigo
-        'qsvc__kernel': ['poly'],
-        'qsvc__degree': [2],
-        
-        # Gamma: 'scale' é a abordagem moderna recomendada (1 / (n_features * X.var()))
-        'qsvc__gamma': ['scale'],
-        
-        # Coef0: O parâmetro 'r' na fórmula (gamma*<x,x'> + r)^d. 
-        # Em kernels quadráticos do MATLAB, o padrão é 1.
-        'qsvc__coef0': [1],
-        
-        # O MATLAB usa One-vs-One (OvO) por padrão para SVM multiclasse
-        'qsvc__decision_function_shape': ['ovo'],
-        
-        'qsvc__verbose': [True]
-    }
-    
-    # Melhores parâmetros para cada técnica
-    # Carregando o json com as melhores métricas
-    # try:
-    #     with open(results_path) as arq:
-    #         result_json_content = json.load(arq)
-        
-    #     best_param_grid = {
-    #         "qsvc__C": [result_json_content['melhores_parametros']['qsvc__C']],
-    #         "qsvc__gamma": [result_json_content['melhores_parametros']['qsvc__gamma']],
-    #         "qsvc__kernel": [result_json_content['melhores_parametros']['qsvc__kernel']],
-    #         "qsvc__random_state": [42],
-    #         "qsvc__probability": [True], # Necessário para predict_proba
-    #     }
-    # except:
-    # total_combinations = len(ParameterGrid(param_grid))
-    # print(f"Total de Combinações do Grid Search: {total_combinations}")
-
-    # GridSearch com validação cruzada
-    # Usando 'accuracy' como métrica principal para classificação multiclasse
-    grid_search = GridSearchCV(
-        estimator=pipeline,
-        param_grid=param_grid,
-        cv=10,
-        scoring="balanced_accuracy", # <-- Alteração: Usando métrica de classificação / roc_auc_ovr
-        n_jobs=1,
-        verbose=1,
+    # 1. Configurar o estimador base com os parâmetros que você definiu
+    svc_base = SVC(
+        C=1000, 
+        kernel='poly', 
+        degree=2, 
+        gamma='scale', 
+        coef0=1, 
+        decision_function_shape='ovo', 
+        probability=True
     )
 
-    # Iniciando as medições de carbono
-    # tracker.start()
+    # 2. Criar o Bagging para usar todos os núcleos do processador
+    # Isso resolverá o baixo consumo de CPU que você notou
+    qsvc_bagging = BaggingClassifier(
+        estimator=svc_base, 
+        n_estimators=10, 
+        n_jobs=-1, 
+        verbose=1
+    )
 
-    # Executar busca
-    # Atenção: SVC requer que y_train seja um vetor de classes (0, 1, ..., 16)
-    grid_search.fit(X_train, y_train)
+    # 3. Montar o Pipeline (sem as dobras do GridSearch)
+    pipeline_steps = [
+        ('feature_extraction', XPQRSFeatureExtractor()),
+        ('qsvc', qsvc_bagging)
+    ]
+
+    # Adicionar o CS_transformer se necessário
+    if technique not in ['original_data', 'random_mesurements']:
+        pipeline_steps.insert(0, ('cs_transformer', CompressiveSensingTransformer(technique=technique, verbose=True)))
+
+    pipeline = Pipeline(pipeline_steps)
+
+    # 4. Treinar diretamente
+    # O consumo de CPU subirá agora porque o Bagging processa n_estimators em paralelo
+    pipeline.fit(X_train, y_train)
+    
+    # Avalia o pipeline em 10 partes sem o peso do GridSearch
+    # cv_results = cross_validate(pipeline, X_train, y_train, cv=10, scoring='accuracy', n_jobs=-1)
+    # print(f"Acurácia Média: {cv_results['test_score'].mean():.4f}")
 
     # Finalizando as medições de carbono
     # emissions: float = tracker.stop()
 
     # Resultados
-    best_model = grid_search.best_estimator_
-    best_index = grid_search.best_index_
-    # best_model = joblib.load(model_path)
-    print("\nMelhores hiperparâmetros encontrados:")
-    print(grid_search.best_params_)
-
     # Salvar o modelo ajustado
-    joblib.dump(best_model, model_path)
+    joblib.dump(pipeline, model_path)
 
     # Avaliação no conjunto de teste
-    y_pred = best_model.predict(X_test)
+    y_pred = pipeline.predict(X_test)
     
     # Métricas de Classificação
-    y_pred_proba = best_model.predict_proba(X_test)
+    y_pred_proba = pipeline.predict_proba(X_test)
     mse = mean_squared_error(y_test, y_pred)
     accuracy = accuracy_score(y_test, y_pred)
     roc_score = roc_auc_score(y_test, y_pred_proba, multi_class='ovr')
     report = classification_report(y_test, y_pred, zero_division=0)
-    std_test_score = grid_search.cv_results_['std_test_score'][best_index]
-    mean_test_score = grid_search.best_score_
+    # std_test_score = grid_search.cv_results_['std_test_score'][best_index]
+    # mean_test_score = grid_search.best_score_
 
     print(f"\nDesempenho no conjunto de teste:")
     print(f"Acurácia (Accuracy): {accuracy:.4f}")
@@ -150,14 +115,15 @@ def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
 
     # Preparação dos dados para o JSON de resultados
     doc = {
-        "melhores_parametros": grid_search.best_params_,
+        # "melhores_parametros": grid_search.best_params_,
         "acuracia": round(accuracy, 4),
         "roc_auc_score": round(roc_score, 4),
         "mse": round(mse, 4),
         "relatorio_classificacao": report, # Pode ser útil salvar o relatório completo
+        # "Acurácia Média": cv_results['test_score'],
         # "n_combinations": total_combinations,
-        "best_mean_score": round(mean_test_score, 4),
-        "std_best_score_k_fold": round(std_test_score, 4)
+        # "best_mean_score": round(mean_test_score, 4),
+        # "std_best_score_k_fold": round(std_test_score, 4)
         # "mean_emission": round((emissions / total_combinations), 4) if total_combinations > 0 and total_combinations != None else 0,
     }
 
@@ -226,7 +192,7 @@ if __name__ == '__main__':
 
     # Execução da função
     try:
-        results = qsvc_training(X_train, y_train, X_test, y_test, X)
+        results = qsvc_training_without_gridsearch(X_train, y_train, X_test, y_test, X)
         print("\nTreinamento concluído. Resultados salvos.")
     except Exception as e:
         print(f"\nOcorreu um erro durante a execução: {e}")
