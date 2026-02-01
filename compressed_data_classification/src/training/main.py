@@ -91,6 +91,7 @@ for technique in techniques:
         print()
     except  Exception as e:
         send_telegram_msg(f"Falha na execução do código -> ERRO: {e}")
+        print(e)
         # send_telegram_msg(f"Falha na execução do código: {technique}")
         break
 

@@ -27,6 +27,9 @@ def qsvc_training_without_gridsearch(X_train, y_train, X_test, y_test, X, techni
     Treina e avalia um classificador SVM com Kernel RBF (SVC)
     usando Grid Search para um problema de classificação multiclasse.
     """
+    
+    # X_train = np.array(X_train, copy=True)
+    # y_train = np.array(y_train, copy=True)
 
     # --- Configurações de Paths ---
     # É uma boa prática garantir que os diretórios existam
@@ -68,7 +71,7 @@ def qsvc_training_without_gridsearch(X_train, y_train, X_test, y_test, X, techni
     qsvc_bagging = BaggingClassifier(
         estimator=svc_base, 
         n_estimators=10, 
-        n_jobs=-1, 
+        n_jobs=1, 
         verbose=1
     )
 
