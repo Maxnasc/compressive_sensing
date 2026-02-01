@@ -6,6 +6,7 @@ import time
 from typing import Optional, Tuple, List, Union
 from sklearn.base import clone
 from rich.status import Status
+import matplotlib.pyplot as plt
 
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
@@ -438,6 +439,18 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
 
         return final_X
 
+    def _plot_reconstructed(self, x_original, x_reconstructed):
+        for i in range(15):
+            plt.figure()
+            plt.plot(x_original[i], label="Sinal original", ls='--', color='grey')
+            plt.plot(x_reconstructed[i], label="Sinal reconstruído", color='blue')
+            plt.title("Sinal orginal vs reconstruído")
+            plt.xlabel('Amostras (n)')
+            plt.ylabel('Amplitude (V)')
+            plt.legend()
+            plt.savefig(f'compressed_data_classification/src/models/best_qsvc_results/plots/sinais reconstruidos/exemplo_reconstrucao_disturbio_{i}.png')
+        # plt.show()
+
     @profile
     def transform(self, Y: np.ndarray) -> np.ndarray:
         """
@@ -479,6 +492,8 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         print(f"Fusão/Reverse:      {t4-t3:.4f}s")
         print(f"Tempo Total:        {t4-t0:.4f}s")
 
+        self._plot_reconstructed(x_original=Y, x_reconstructed=X_resized)
+        
         return X_resized
 
     def fit_transform(
