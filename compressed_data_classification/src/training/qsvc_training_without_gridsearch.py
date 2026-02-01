@@ -11,6 +11,7 @@ from pathlib import Path
 from sklearn.model_selection import GridSearchCV, ParameterGrid
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, mean_squared_error, roc_auc_score
 from sklearn.svm import SVC # <-- Alteração: Importando SVC
+from sklearn.preprocessing import StandardScaler
 
 # Imports de funções auxiliares
 from compressed_data_classification.src.pipelines.CS_transformer import CompressiveSensingTransformer
@@ -56,7 +57,9 @@ def qsvc_training_without_gridsearch(X_train, y_train, X_test, y_test, X, techni
         degree=2, 
         gamma='scale', 
         coef0=1, 
-        decision_function_shape='ovo', 
+        decision_function_shape='ovo',
+        max_iter=10000,  # <-- Força a parada após 10k iterações
+        tol=1e-3,        # Tolerância (pode aumentar para 1e-2 para ser mais rápido)
         probability=True
     )
 
@@ -72,6 +75,7 @@ def qsvc_training_without_gridsearch(X_train, y_train, X_test, y_test, X, techni
     # 3. Montar o Pipeline (sem as dobras do GridSearch)
     pipeline_steps = [
         ('feature_extraction', XPQRSFeatureExtractor()),
+        ('scaler', StandardScaler()),
         ('qsvc', qsvc_bagging)
     ]
 
