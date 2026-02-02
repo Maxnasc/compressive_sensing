@@ -19,6 +19,7 @@ if root_path not in sys.path:
 from compressed_data_classification.src.training.mlp_training import mlp_training
 from compressed_data_classification.src.training.svm_with_rbf_training import svm_with_rbf_training
 from compressed_data_classification.src.training.qsvc_training import qsvc_training
+from compressed_data_classification.src.training.qsvc_training_without_gridsearch import qsvc_training_without_gridsearch
 
 import time
 from compressed_data_classification.utils.utils import send_telegram_msg
@@ -30,8 +31,9 @@ def import_and_split_dataset(data_path):
     # df = df.drop(columns=['Unnamed: 0', 'F3_norm'])
 
     # Variável alvo
+
     y = df['target']
-    X = df.drop(columns=['target', 'Unnamed: 0'])
+    X = df.drop(columns=['target'])
 
     # Encoder das labels
     label_encoder = LabelEncoder()
@@ -50,6 +52,7 @@ start_global = time.time()
 # Técnica de compressão de dados energy/topk/pca/pure_alpha/random_mesurements
 # techniques = ['energy','topk','pca','pure_alpha','random_mesurements', 'original_data']
 # techniques = ['original_data', 'reconstructed_2_dot_5', 'reconstructed_random', 'random_mesurements']
+# techniques = ['reconstructed_2_dot_5', 'reconstructed_random', 'random_mesurements']
 techniques = ['reconstructed_2_dot_5']
 
 # Console para exibir status
@@ -57,6 +60,8 @@ console = Console()
 
 # Treinar usando os diferentes métodos de treinamento e salvar cada um
 for technique in techniques:
+    
+    t_init = time.perf_counter()
     
     if technique == 'original_data':
         X_train, X_test, y_train, y_test, label_encoder, X = import_and_split_dataset('compressed_data_classification/data/raw/data.csv')
@@ -72,25 +77,36 @@ for technique in techniques:
     
     try:
         # Modelos
-        with Status(f"[bold green]Treinando MLP para {technique}...[/]", spinner="dots"):
-            mlp_info = mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
-        print()
-        with Status(f"[bold green]Treinando SVM com RBF para {technique}...[/]", spinner="dots"):
-            svm_rbf = svm_with_rbf_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
-        print()
+        # with Status(f"[bold green]Treinando MLP para {technique}...[/]", spinner="dots"):
+        #     mlp_info = mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
+        # print()
+        # with Status(f"[bold green]Treinando SVM com RBF para {technique}...[/]", spinner="dots"):
+        #     svm_rbf = svm_with_rbf_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
+        # print()
+        # with Status(f"[bold green]Treinando SVM quadrático para {technique}...[/]", spinner="dots"):
+        #     qsvc = qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
+        # print()
         with Status(f"[bold green]Treinando SVM quadrático para {technique}...[/]", spinner="dots"):
-            qsvc = qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
+            qsvc = qsvc_training_without_gridsearch(X_train, y_train, X_test, y_test, X, technique, label_encoder)
         print()
     except  Exception as e:
-        send_telegram_msg(f"Falha na execução do código: {technique}")
+        send_telegram_msg(f"Falha na execução do código -> ERRO: {e}")
+        print(e)
+        # send_telegram_msg(f"Falha na execução do código: {technique}")
         break
 
     # Montando tabela de comparação entre os modelos
-    df = pd.DataFrame([mlp_info, svm_rbf, qsvc])
+    # df = pd.DataFrame([mlp_info, svm_rbf, qsvc])
+    df = pd.DataFrame([qsvc])
     # df = df.drop('melhores_parametros')
 
     # print(df)
-    df.to_excel(f'compressed_data_classification\src\models/best_models_result/resultados_modelos_{technique}.xlsx')
+    df.to_excel(f'compressed_data_classification/src/models/best_models_result/resultados_modelos_{technique}.xlsx')
+    
+    t_end = time.perf_counter()    
+    # Adicionar uma mensagem no hermes quando terminar o terinamento com determinada técnica
+    minutes_i, seconds_i = divmod((t_end-t_init), 60)
+    send_telegram_msg(f"Treinamento para {technique} finalizado. Tempo de treinamento: {int(minutes_i)}m {seconds_i:.2f}s")
 
 
 end_global = time.time()
@@ -98,7 +114,7 @@ duration = end_global-start_global
 
 minutes, seconds = divmod(duration, 60)
 
-send_telegram_msg(f"🚀 Treinamento dos modelos usando compressive sensing terminado!\n⏱️ Tempo total: {int(minutes)}m {seconds:.2f}s")
+send_telegram_msg(f"🚀 Treinamento dos modelos usando compressive sensing OMP terminado!\n⏱️ Tempo total: {int(minutes)}m {seconds:.2f}s")
 
 # Mostrar todos os gráficos
-# plt.show()
+# plt.show() 

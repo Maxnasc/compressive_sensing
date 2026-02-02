@@ -2,7 +2,11 @@
 import os
 import pickle
 import json
+import time
 from typing import Optional, Tuple, List, Union
+from sklearn.base import clone
+from rich.status import Status
+import matplotlib.pyplot as plt
 
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
@@ -24,6 +28,15 @@ except ImportError:
     HAS_GPU = False
     cp = None
 
+# Para rodar o profiler
+import builtins
+
+# Se o comando 'profile' não existir no ambiente global (rodando sem kernprof)
+# ele cria um decorador falso que não faz nada, apenas para não dar erro.
+if 'profile' not in builtins.__dict__:
+    def profile(func): 
+        return func
+    builtins.__dict__['profile'] = profile
 
 class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
     """
@@ -34,13 +47,12 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
     def __init__(
         self,
         technique: str = "energy",
-        cs_structures_path: str = "compressed_data_classification/src/cs/cs_constants",
-        cs_metrics_path: str = "compressed_data_classification/src/cs/results/metrics/best_cs_tune_metrics.json",
+        cs_structures_path: str = "compressed_data_classification/src/cs_omp/cs_constants",
+        cs_metrics_path: str = "compressed_data_classification/src/cs_omp/results/metrics/best_cs_tune_metrics.json",
         lasso_alpha: float = 1e-4,
         K_topk: int = 40,
         pca_components: int = 40,
-        n_jobs: int = 1,
-        use_gpu: bool = True,
+        n_jobs: int = -1,
         verbose: bool = False,
     ):
         self.cs_structures_path = cs_structures_path
@@ -50,12 +62,6 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         self.pca_components = pca_components
         self.n_jobs = n_jobs
         self.verbose = verbose
-        
-        # GPU control
-        self.use_gpu = use_gpu and HAS_GPU
-        if use_gpu and not HAS_GPU:
-            print("[WARN] GPU solicitada mas CuPy/CuML não disponível. Usando CPU.")
-        
         # Controle de qual abordagem vai sar usada na trasnformação
         self.technique = technique
 
@@ -70,10 +76,8 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         self.window_size = None
         self.window_step = None
         
-        # GPU caches
-        self.A_norm_gpu = None
-        self.col_norms_gpu = None
-        self.Psi_wave_gpu = None
+        # modelo de otimização de alpha
+        self.base_model = None
 
         # runtime caches
         self._topk_idx = None
@@ -112,21 +116,27 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         """Carrega estruturas salvas anteriormente."""
         if path is None:
             path = self.cs_structures_path
-        with open(self.cs_metrics_path, 'r') as f:
+        with open(self.cs_metrics_path, "r") as f:
             metrics = json.load(f)
-        
-        self.Phi = np.load(f'{path}/cs_best_result_Phi.npy')
-        self.Psi_wave = np.load(f'{path}/cs_best_result_Psi_w.npy')
-        self.A_norm = np.load(f'{path}/cs_best_result_A_norm.npy')
-        self.col_norms = np.load(f'{path}/cs_best_result_col_norms.npy')
+
+        # with open(path, "rb") as f:
+        #     data = pickle.load(f)
+        self.Phi = np.load(f"{path}/cs_best_result_Phi.npy")
+        self.Psi_wave = np.load(f"{path}/cs_best_result_Psi_w.npy")
+        self.A_norm = np.load(f"{path}/cs_best_result_A_norm.npy")
+        self.col_norms = np.load(f"{path}/cs_best_result_col_norms.npy")
         self.N = metrics.get("config_parameters").get("N")
         self.lasso_alpha = metrics.get("config_parameters").get("PARAM_VAL")
         self.window_size = metrics.get("config_parameters").get("WINDOW_SIZE")
         self.window_step = metrics.get("config_parameters").get("WINDOW_STEP")
+        # self.shapes = data.get("shapes")
+        # self.Psi_concat = data.get("Psi_concat", None)
         
-        # Transferir para GPU se disponível
-        if self.use_gpu:
-            self._transfer_to_gpu()
+        # Instanciando o Lasso para otimização
+        # self.base_model = Lasso(alpha=self.lasso_alpha, max_iter=2000, fit_intercept=False)
+        # self.base_model = OrthogonalMatchingPursuit(n_nonzero_coefs=int(self.lasso_alpha))
+        k_value = max(1, int(self.lasso_alpha)) 
+        self.base_model = OrthogonalMatchingPursuit(n_nonzero_coefs=k_value)
         
         if self.verbose:
             print(f"[LOAD] Estruturas CS carregadas de: {path}")
@@ -330,62 +340,53 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
     def extract_topk_idx_global(alphas: np.ndarray, K: int) -> np.ndarray:
         mean_abs = np.mean(np.abs(alphas), axis=0)
         topk_idx = np.argsort(mean_abs)[-K:]
-        return np.sort(topk_idx)
-    
-    def reconstruct_from_y(self, y: np.ndarray, method: str = "LASSO") -> np.ndarray:
-        """Reconstrói sinal a partir de y (CPU)."""
+        return np.sort(topk_idx)  # retorna ordenado (bom para slicing)
+
+    @profile
+    def reconstruct_from_y(
+        self,
+        y: np.ndarray,
+        method: str = "LASSO",
+    ) -> np.ndarray:
+        """
+        Reconstrói o sinal x a partir do sinal subamostrado y.
+        Replica exatamente o pipeline do cs_tunning.py
+        """
         if self.A_norm is None or self.col_norms is None:
             raise ValueError("Estruturas CS não carregadas.")
-
-        if method == "OMP":
-            model = OrthogonalMatchingPursuit(n_nonzero_coefs=int(self.lasso_alpha))
-            model.fit(self.A_norm, y)
-        else:
-            model = Lasso(alpha=self.lasso_alpha, max_iter=10000, fit_intercept=False)
-            model.fit(self.A_norm, y)
-
-        coef = model.coef_ / self.col_norms
-        alpha_I = coef[:self.N]
-        alpha_wave = coef[self.N:]
-        x_rec = alpha_I + self.Psi_wave.dot(alpha_wave)
-
-        return x_rec
-
-    def _reconstruct_from_y_gpu(self, y_gpu) -> np.ndarray:
-        """Reconstrói sinal a partir de y (GPU)."""
-        if not self.use_gpu or cp is None:
-            y_np = cp.asnumpy(y_gpu) if hasattr(y_gpu, 'get') else y_gpu
-            return self.reconstruct_from_y(y_np)
         
-        try:
-            # Solver Lasso em GPU
-            model = LassoGPU(
-                alpha=self.lasso_alpha,
-                max_iter=10000,
-                fit_intercept=False,
-                output_type='numpy'
-            )
-            model.fit(self.A_norm_gpu, y_gpu)
-            
-            # Desnormalizar
-            coef = model.coef_ / (cp.asnumpy(self.col_norms_gpu) + 1e-16)
-            alpha_I = coef[:self.N]
-            alpha_wave = coef[self.N:]
-            
-            # Reconstrução (usar CPU para Psi_wave se não estiver em GPU)
-            if self.Psi_wave_gpu is not None:
-                alpha_wave_gpu = cp.asarray(alpha_wave)
-                x_rec = alpha_I + cp.asnumpy(self.Psi_wave_gpu.dot(alpha_wave_gpu))
-            else:
-                x_rec = alpha_I + self.Psi_wave.dot(alpha_wave)
-            
-            return x_rec
-            
-        except Exception as e:
-            print(f"[ERROR GPU Reconstruct] {e}. Usando CPU.")
-            y_np = cp.asnumpy(y_gpu) if hasattr(y_gpu, 'get') else y_gpu
-            return self.reconstruct_from_y(y_np)
+        t0 = time.perf_counter()
 
+        # # Resolver alpha
+        # if method == "OMP":
+        #     model = OrthogonalMatchingPursuit(n_nonzero_coefs=int(self.lasso_alpha))
+        #     model.fit(self.A_norm, y)
+        # else:
+        
+        # clonando o modelo para evitar os erros de thread
+        # model = clone(self.base_model)
+            
+        self.base_model.fit(self.A_norm, y)
+        t1 = time.perf_counter()
+
+        coef = self.base_model.coef_ / self.col_norms
+        t2 = time.perf_counter()
+
+        # Reconstrução no domínio do tempo
+        alpha_I = coef[: self.N]
+        
+        alpha_wave = coef[self.N :]
+        x_rec = alpha_I + self.Psi_wave.dot(alpha_wave)
+        t3 = time.perf_counter()
+        
+        # # Relatório de Tempos dentro da função de reconstrução
+        # print(f"\n--- Profiling reconstruct_from_y ---")
+        # print(f"fit do modelo: {t1-t0:.4f}s")
+        # print(f"coeficientes:        {t2-t1:.4f}s")
+        # print(f"Multiplicação matricial:  {t3-t2:.4f}s")
+        # print(f"Total:  {t3-t0:.4f}s")
+        
+        return x_rec
 
     # -------------------------
     # export features
@@ -400,7 +401,19 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         if self.A_norm is None or self.col_norms is None:
             raise ValueError("Estruturas CS não definidas.")
 
-        if self.technique == "random_mesurements":
+        if (
+            self.technique == "random_mesurements"
+        ):  # Usa o vetor de medidas aleatório antes da otimização
+            # if self._is_mask(self.Phi):
+            #     # Phi é mask booleana (N,)
+            #     return X[:, self.Phi], []
+
+            # elif self._is_index_array(self.Phi):
+            #     # Phi são índices (M,)
+            #     return X[:, self.Phi], []
+
+            # elif isinstance(self.Phi, np.ndarray) and self.Phi.ndim == 2:
+            # Phi é matriz M×N
             return X.dot(self.Phi.T), []
 
         alphas = self.compute_alphas(X, alpha_lasso=alpha_lasso)
@@ -432,7 +445,7 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
 
         elif self.technique == "pure_alpha":
             return alphas, alphas
-        
+
         elif self.technique == "original_data":
             return X, alphas
 
@@ -467,54 +480,25 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
                 if self.verbose:
                     print(f"[INIT] Falha ao carregar cs_structures: {e}")
         return self
-    
-    def _compute_alphas_batch(self, Y_batch: np.ndarray) -> np.ndarray:
-        """
-        Resolve Lasso para MÚLTIPLAS amostras em paralelo com joblib
-        Y_batch: (N_janelas, M)
-        Retorna: (N_janelas, N) onde N = self.N + len(shapes)
-        """
-        num_samples = Y_batch.shape[0]
-        
-        # Usar joblib.Parallel em vez de loop serial
-        X_rec_list = Parallel(n_jobs=self.n_jobs)(
-            delayed(self.reconstruct_from_y)(Y_batch[i])
-            for i in range(num_samples)
-        )
-        
-        return np.vstack(X_rec_list)
-    
+
     def sliding_window_maker(self, Y_raw):
-        """Cria janelas de Y_raw (N_amostras, 50) -> (N_janelas, 600)."""
-        Y_windows = sliding_window_view(Y_raw, window_shape=self.window_size, axis=0)[::self.window_step]
+        # Y_raw shape esperado: (N_amostras, 50)
+
+        # 1. Cria as janelas. Resultado: (N_janelas, 50, 12)
+        Y_windows = sliding_window_view(Y_raw, window_shape=self.window_size, axis=0)[
+            :: self.window_step
+        ]
+
+        # 2. Transpõe para o formato (N_janelas, 12, 50)
         Y_windows = Y_windows.transpose(0, 2, 1)
+
+        # 3. ACHATAMENTO DINÂMICO
+        # num_windows = total de janelas geradas
+        # -1 faz o numpy calcular automaticamente: 12 * 50 = 600
         num_windows = Y_windows.shape[0]
         Y_all = Y_windows.reshape(num_windows, -1)
-        return Y_all
 
-    def reverse_windowing_optimized(self, windows_3d, original_rows):
-        """
-        Versão otimizada de reverse_windowing usando operações NumPy vetorizadas.
-        """
-        num_janelas, window_size, num_samples = windows_3d.shape
-        
-        reconstructed_full = np.zeros((original_rows, num_samples), dtype=np.float32)
-        counts = np.zeros((original_rows, 1), dtype=np.float32)
-        
-        # Pré-calcular índices
-        start_indices = np.arange(num_janelas) * self.window_step
-        
-        for i in range(num_janelas):
-            start_idx = start_indices[i]
-            end_idx = min(start_idx + window_size, original_rows)
-            
-            if start_idx < original_rows:
-                rows_to_fill = end_idx - start_idx
-                reconstructed_full[start_idx:end_idx] += windows_3d[i, :rows_to_fill, :]
-                counts[start_idx:end_idx] += 1
-        
-        counts = np.maximum(counts, 1)  # Evita div por zero
-        return reconstructed_full / counts
+        return Y_all  # Retorna matriz (N_janelas, 600)
 
     def reverse_windowing(self, windows_3d, original_rows):
         """
@@ -522,29 +506,88 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         original_rows: 17000 (quantidade de sinais originais)
         window_step: O passo usado no janelamento (ex: 6 para 50% de sobreposição)
         """
-        return self.reverse_windowing_optimized(windows_3d, original_rows)
+        num_janelas, window_size, num_samples = windows_3d.shape
 
+        # Matriz para acumular os valores reconstruídos
+        reconstructed_full = np.zeros((original_rows, num_samples))
+        # Matriz para contar quantas vezes cada linha foi preenchida (para tirar a média)
+        counts = np.zeros((original_rows, 1))
+
+        for i in range(num_janelas):
+            start_idx = i * self.window_step
+            end_idx = start_idx + window_size
+
+            # Caso a última janela ultrapasse o limite de 17000
+            if end_idx > original_rows:
+                overlap_end = original_rows - start_idx
+                reconstructed_full[start_idx:original_rows] += windows_3d[
+                    i, :overlap_end, :
+                ]
+                counts[start_idx:original_rows] += 1
+            else:
+                reconstructed_full[start_idx:end_idx] += windows_3d[i]
+                counts[start_idx:end_idx] += 1
+
+        # Divide pelo número de ocorrências para obter a média suave
+        counts[counts == 0] = 1  # Evita divisão por zero
+        final_X = reconstructed_full / counts
+
+        return final_X
+
+    def _plot_reconstructed(self, x_original, x_reconstructed):
+        for i in range(15):
+            plt.figure()
+            plt.plot(x_original[i], label="Sinal original", ls='--', color='grey')
+            plt.plot(x_reconstructed[i], label="Sinal reconstruído", color='blue')
+            plt.title("Sinal orginal vs reconstruído")
+            plt.xlabel('Amostras (n)')
+            plt.ylabel('Amplitude (V)')
+            plt.legend()
+            plt.savefig(f'compressed_data_classification/src/models/best_qsvc_results/plots/sinais reconstruidos/exemplo_reconstrucao_disturbio_{i}.png')
+        # plt.show()
+
+    @profile
     def transform(self, Y: np.ndarray) -> np.ndarray:
         """
         Y: matriz de sinais subamostrados (n_samples x M)
         Retorna sinais reconstruídos (n_samples x N)
         """
-        Y = Y.to_numpy() if hasattr(Y, 'to_numpy') else Y
-        
-        if self.verbose:
-            mode = "GPU" if self.use_gpu else "CPU"
-            print(f"[TRANSFORM] Usando {mode} | Input shape: {Y.shape}")
-    
-        # 1. Janelamento
+        t0 = time.perf_counter()
+        X_rec = []
+
+        # Convertendo o Y de dataframe para array numpy
+        Y = Y.to_numpy()
+        t1 = time.perf_counter()
+
+        # Conversão de Y em batchs de 12 sinais tal qual o feito no código de tunnig
         Y_batch = self.sliding_window_maker(Y_raw=Y)
-        
-        # 2. Resolver Lasso (CPU ou GPU)
-        X_rec = self._compute_alphas_batch(Y_batch)
-        
-        # 3. Desjanelamento otimizado
+        t2 = time.perf_counter()
+
+        X_rec = []
+        with Status("Reconstruindo os sinais em lotes", spinner="dots"):
+            for i in range(Y_batch.shape[0]):
+                x_hat = self.reconstruct_from_y(Y_batch[i])
+                X_rec.append(x_hat)
+        t3 = time.perf_counter()
+
+        # Separar os sinais convertidos em distúrbios unitários novamente (dividir por 12)
+        X_rec = np.array(X_rec)
         num_windows = X_rec.shape[0]
         X_rec_3d = X_rec.reshape(num_windows, 12, 100)
-        X_resized = self.reverse_windowing(windows_3d=X_rec_3d, original_rows=Y.shape[0])
+        X_resized = self.reverse_windowing(
+            windows_3d=X_rec_3d, original_rows=Y.shape[0]
+        )
+        t4 = time.perf_counter()
+        
+        # Relatório de Tempos
+        print(f"\n--- Profiling Transform ---")
+        print(f"Conversão p/ Numpy: {t1-t0:.4f}s")
+        print(f"Janelamento:        {t2-t1:.4f}s")
+        print(f"Reconstrução (CS):  {t3-t2:.4f}s (Total de {Y_batch.shape[0]} janelas)")
+        print(f"Fusão/Reverse:      {t4-t3:.4f}s")
+        print(f"Tempo Total:        {t4-t0:.4f}s")
+
+        self._plot_reconstructed(x_original=Y, x_reconstructed=X_resized)
         
         return X_resized
 

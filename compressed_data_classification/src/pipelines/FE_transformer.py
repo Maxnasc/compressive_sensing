@@ -1,6 +1,15 @@
 import numpy as np
 import pandas as pd
+import time
 from sklearn.base import BaseEstimator, TransformerMixin
+
+# Para rodar o profiler
+import builtins
+
+if 'profile' not in builtins.__dict__:
+    def profile(func): 
+        return func
+    builtins.__dict__['profile'] = profile
 
 class XPQRSFeatureExtractor(BaseEstimator, TransformerMixin):
     def __init__(self):
@@ -33,18 +42,21 @@ class XPQRSFeatureExtractor(BaseEstimator, TransformerMixin):
         
         # 3. Mobility (Mob)
         # Mobility = sqrt(Var(du/dt) / Var(u))
-        var_u = np.var(u)
-        # Calcula a derivada temporal interna para a mobilidade
-        du_dt = np.diff(u)
-        var_du_dt = np.var(du_dt)
-        mob = np.sqrt(var_du_dt / (var_u + epsilon))
+        if len(u) > 1:
+            var_u = np.var(u)
+            du_dt = np.diff(u)
+            mob = np.sqrt(np.var(du_dt) / (var_u + epsilon))
+        else:
+            mob = 0.0
         
         return [le, se, mob]
 
+    @profile
     def transform(self, X):
         """
         Processa cada sinal para gerar o vetor de 15 características[cite: 160, 161].
         """
+        t0 = time.perf_counter()
         # Verificando se X é um dicionário ou um array numpy
         if type(X) == np.ndarray: # <- Veio do CS
             # Converte para dataframe
@@ -62,6 +74,8 @@ class XPQRSFeatureExtractor(BaseEstimator, TransformerMixin):
             
             features_list.append(sig_features)
             
+        t1 = time.perf_counter()
+        print(f"Tempo total de transformação para {X.shape[0]}: {t1-t0:.4f}s")
         return np.array(features_list)
 
     def fit(self, X, y=None):

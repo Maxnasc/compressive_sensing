@@ -28,8 +28,9 @@ def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
 
     # --- Configurações de Paths ---
     # É uma boa prática garantir que os diretórios existam
-    base_path = Path("compressed_data_classification/src/models/best_models_result/qsvc")
+    base_path = Path("compressed_data_classification/src/models/best_qsvc_results")
     Path(base_path, "emissions").mkdir(parents=True, exist_ok=True)
+    Path(base_path, "plots").mkdir(parents=True, exist_ok=True)
     
     # Ajustando paths para o SVC (RBF)
     model_path = f"{base_path}/model_{technique}.pkl"
@@ -48,7 +49,7 @@ def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
     # Criando o pipeline
     pipeline_steps = [
         ('feature_extraction', XPQRSFeatureExtractor()),
-        ('qsvc', SVC(kernel='poly', degree=2))
+        ('qsvc', SVC())
     ]
     
     # ✅ Aplicar CS_transformer APENAS se não for original_data ou random_mesurements
@@ -57,32 +58,29 @@ def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
     
     pipeline = Pipeline(pipeline_steps)
     
-    # --- Hiperparâmetros para o SVC com Kernel RBF ---
-    # C: Parâmetro de Regularização (inverso da força de regularização)
-    # gamma: Coeficiente do kernel RBF (influencia a "alcance" de uma única amostra de treinamento)
     param_grid = {
-        # C: Controla o trade-off entre a margem suave e a classificação correta
-        # Valores de 0.001 a 1000 para cobrir desde alta regularização até sobreajuste
-        # 'qsvc__C': [0.1, 1, 10, 100, 1000],
-        'qsvc__C': [0.1, 1, 10, 100, 1000],
+        # C (ou K no artigo): Fator de penalidade. 
+        # O padrão do MATLAB/Artigo é 1.
+        'qsvc__C': [1000], 
 
-        # adicionar o probability para evitar o erro de predict_proba
-        'qsvc__probability': [True]
+        # Habilita probabilidades para evitar erro no predict_proba
+        'qsvc__probability': [True],
         
-        # # Kernel fixo em polinomial de grau 2 conforme o artigo
-        # 'qsvc__kernel': ['poly'],
-        # 'qsvc__degree': [2],
+        # Kernel fixo em polinomial de grau 2 conforme o artigo
+        'qsvc__kernel': ['poly'],
+        'qsvc__degree': [2],
         
-        # # Gamma: Define a influência de um único exemplo de treinamento
-        # # 'scale' e 'auto' são bons pontos de partida, mas valores manuais refinam o modelo
-        # 'qsvc__gamma': ['scale', 'auto', 0.01, 0.1, 1],
+        # Gamma: 'scale' é a abordagem moderna recomendada (1 / (n_features * X.var()))
+        'qsvc__gamma': ['scale'],
         
-        # # Coef0: O parâmetro 'r' na fórmula (gamma*<x,x'> + r)^d. 
-        # # É crucial para kernels polinomiais para controlar a influência de termos de alta ordem
-        # 'qsvc__coef0': [0, 1, 5],
+        # Coef0: O parâmetro 'r' na fórmula (gamma*<x,x'> + r)^d. 
+        # Em kernels quadráticos do MATLAB, o padrão é 1.
+        'qsvc__coef0': [1],
         
-        # # Decision_function_shape: 'ovr' (one-vs-rest) é o padrão para multiclasse
-        # 'qsvc__decision_function_shape': ['ovr']
+        # O MATLAB usa One-vs-One (OvO) por padrão para SVM multiclasse
+        'qsvc__decision_function_shape': ['ovo'],
+        
+        'qsvc__verbose': [True]
     }
     
     # Melhores parâmetros para cada técnica
@@ -99,8 +97,8 @@ def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
     #         "qsvc__probability": [True], # Necessário para predict_proba
     #     }
     # except:
-    total_combinations = len(ParameterGrid(param_grid))
-    print(f"Total de Combinações do Grid Search: {total_combinations}")
+    # total_combinations = len(ParameterGrid(param_grid))
+    # print(f"Total de Combinações do Grid Search: {total_combinations}")
 
     # GridSearch com validação cruzada
     # Usando 'accuracy' como métrica principal para classificação multiclasse
@@ -108,8 +106,8 @@ def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
         estimator=pipeline,
         param_grid=param_grid,
         cv=10,
-        scoring="accuracy", # <-- Alteração: Usando métrica de classificação
-        n_jobs=-1,
+        scoring="balanced_accuracy", # <-- Alteração: Usando métrica de classificação / roc_auc_ovr
+        n_jobs=1,
         verbose=1,
     )
 
@@ -157,7 +155,7 @@ def qsvc_training(X_train, y_train, X_test, y_test, X, technique, label_encoder)
         "roc_auc_score": round(roc_score, 4),
         "mse": round(mse, 4),
         "relatorio_classificacao": report, # Pode ser útil salvar o relatório completo
-        "n_combinations": total_combinations,
+        # "n_combinations": total_combinations,
         "best_mean_score": round(mean_test_score, 4),
         "std_best_score_k_fold": round(std_test_score, 4)
         # "mean_emission": round((emissions / total_combinations), 4) if total_combinations > 0 and total_combinations != None else 0,
@@ -228,7 +226,7 @@ if __name__ == '__main__':
 
     # Execução da função
     try:
-        results = svc_rbf_training(X_train, y_train, X_test, y_test, X)
+        results = qsvc_training(X_train, y_train, X_test, y_test, X)
         print("\nTreinamento concluído. Resultados salvos.")
     except Exception as e:
         print(f"\nOcorreu um erro durante a execução: {e}")
