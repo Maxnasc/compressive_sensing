@@ -1,3 +1,15 @@
+"""
+Module: utils.py
+
+This module contains utility functions for the compressed data classification project.
+
+Functions provide support for:
+- Telegram notifications for training progress and completion messages
+
+Author: Maxnasc7
+License: MIT
+"""
+
 import os
 from dotenv import load_dotenv
 import requests
@@ -6,6 +18,30 @@ import requests
 load_dotenv()
 
 def send_telegram_msg(message):
+    """
+    Send a message to Telegram via Telegram Bot API.
+    
+    This function retrieves Telegram credentials from environment variables (.env file)
+    and sends a message to a specified chat. Useful for notifying about training progress,
+    completion, or errors.
+    
+    Parameters
+    ----------
+    message : str
+        The message content to send via Telegram.
+    
+    Returns
+    -------
+    None
+    
+    Notes
+    -----
+    Requires the following environment variables to be set in .env file:
+    - TELEGRAM_TOKEN: Bot token from BotFather
+    - TELEGRAM_CHAT_ID: The chat ID where messages will be sent
+    
+    If credentials are not found, a warning message is printed and the function returns.
+    """
     # Busca os valores das variáveis de ambiente
     token = os.getenv("TELEGRAM_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")

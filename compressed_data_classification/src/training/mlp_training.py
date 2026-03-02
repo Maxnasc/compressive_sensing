@@ -1,3 +1,25 @@
+"""
+Module: training/mlp_training.py
+
+Multi-Layer Perceptron (MLP) neural network training for electrical disturbance classification.
+
+This module implements a complete training pipeline for MLP classifiers that can process:
+1. Raw electrical signals
+2. Compressively sensed signals
+3. Extracted feature vectors
+
+The training pipeline includes:
+- Compressive sensing transformation (optional)
+- XPQRS feature extraction (15 features from signal derivatives)
+- Hyperparameter tuning via GridSearchCV
+- Model evaluation with confusion matrix visualization
+- Model persistence and result logging
+
+Author: Maxnasc7
+License: MIT
+Reference: XPQRS feature extraction based on signal processing techniques
+"""
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import joblib
@@ -16,6 +38,52 @@ from compressed_data_classification.src.pipelines.FE_transformer import XPQRSFea
 
 
 def mlp_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
+    """
+    Train and evaluate an MLP classifier with compressive sensing and feature extraction.
+    
+    This function builds a complete ML pipeline that optionally includes compressive sensing
+    transformation and XPQRS feature extraction, then performs hyperparameter tuning
+    using GridSearchCV with 10-fold cross-validation.
+    
+    Parameters
+    ----------
+    X_train : pd.DataFrame or np.ndarray
+        Training features
+    y_train : np.ndarray
+        Encoded training labels
+    X_test : pd.DataFrame or np.ndarray
+        Testing features
+    y_test : np.ndarray
+        Encoded testing labels
+    X : pd.DataFrame or np.ndarray
+        Complete feature matrix (for reference)
+    technique : str
+        Compressive sensing technique to apply:
+        - 'original_data': No compression
+        - 'random_mesurements': Random CS measurements
+        - 'reconstructed_2_dot_5': Reconstructed from 2.5 kHz sampling
+        - others: Apply CS transformer
+    label_encoder : LabelEncoder
+        Fitted label encoder for inverse transforming predictions
+    
+    Returns
+    -------
+    dict
+        Dictionary containing:
+        - 'melhores_parametros': Best hyperparameters found
+        - 'acuracia': Test set accuracy
+        - 'roc_auc_score': ROC-AUC score
+        - 'mse': Mean squared error
+        - 'relatorio_classificacao': Classification report
+        - 'best_mean_score': Best CV score
+        - 'std_best_score_k_fold': Standard deviation of CV scores
+    
+    Notes
+    -----
+    - Saves trained model to: compressed_data_classification/src/models/best_models_result/mlp/model_{technique}.pkl
+    - Saves results to: compressed_data_classification/src/models/best_models_result/mlp/results_{technique}.json
+    - Saves confusion matrix plot to: compressed_data_classification/src/models/best_models_result/mlp/plots/confusion_matrix_{technique}.png
+    """
 
     # Iniciando o tracker de emissões <- CODECARBON
     # tracker = OfflineEmissionsTracker(

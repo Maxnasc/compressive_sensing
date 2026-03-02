@@ -1,3 +1,26 @@
+"""
+Module: training/qsvc_training_without_gridsearch.py
+
+Quadratic SVM training without grid search hyperparameter optimization.
+
+This module implements a simplified Quadratic SVM training pipeline using predefined
+hyperparameters instead of GridSearchCV. It provides faster training when hyperparameters
+have been previously tuned.
+
+Features:
+- Uses fixed hyperparameters (SVM C and gamma)
+- Cross-validation evaluation
+- Model evaluation and visualization
+- Efficient training without grid search overhead
+- Result persistence
+
+This variant is useful for production inference or final model training after
+hyperparameter tuning has been completed.
+
+Author: Maxnasc7
+License: MIT
+"""
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import joblib
@@ -24,8 +47,52 @@ from sklearn.model_selection import cross_validate
 
 def qsvc_training_without_gridsearch(X_train, y_train, X_test, y_test, X, technique, label_encoder):
     """
-    Treina e avalia um classificador SVM com Kernel RBF (SVC)
-    usando Grid Search para um problema de classificação multiclasse.
+    Train and evaluate a Quadratic SVM without GridSearchCV hyperparameter tuning.
+    
+    This function builds and trains a Quadratic SVM pipeline with fixed hyperparameters.
+    It's suitable for final model training after hyperparameters have been optimized.
+    
+    Parameters
+    ----------
+    X_train : pd.DataFrame or np.ndarray
+        Training features
+    y_train : np.ndarray
+        Encoded training labels
+    X_test : pd.DataFrame or np.ndarray
+        Testing features
+    y_test : np.ndarray
+        Encoded testing labels
+    X : pd.DataFrame or np.ndarray
+        Complete feature matrix (for reference)
+    technique : str
+        Compressive sensing technique to apply:
+        - 'original_data': No compression
+        - 'random_mesurements': Random CS measurements
+        - 'reconstructed_2_dot_5': Reconstructed from 2.5 kHz sampling
+        - others: Apply CS transformer
+    label_encoder : LabelEncoder
+        Fitted label encoder for inverse transforming predictions
+    
+    Returns
+    -------
+    dict
+        Dictionary containing:
+        - 'melhores_parametros': Hyperparameters used (not from optimization)
+        - 'acuracia': Test set accuracy
+        - 'roc_auc_score': ROC-AUC score
+        - 'mse': Mean squared error
+        - 'relatorio_classificacao': Classification report
+        - 'best_mean_score': Mean cross-validation score
+        - 'std_best_score_k_fold': Standard deviation of CV scores
+    
+    Notes
+    -----
+    - SVM kernel: Polynomial degree 2 (quadratic)
+    - Cross-validation: 10-fold (for quick validation without full grid search)
+    - Uses predefined C and gamma parameters instead of tuning
+    - Saves trained model to: compressed_data_classification/src/models/best_qsvc_results/model_{technique}.pkl
+    - Saves results to: compressed_data_classification/src/models/best_qsvc_results/results_{technique}.json
+    - Saves confusion matrix plot to: compressed_data_classification/src/models/best_qsvc_results/plots/confusion_matrix_{technique}.png
     """
     
     # X_train = np.array(X_train, copy=True)

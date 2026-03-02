@@ -1,3 +1,23 @@
+"""
+Module: training/svm_with_rbf_training.py
+
+Support Vector Machine with RBF kernel for electrical disturbance classification.
+
+This module implements SVM training using Radial Basis Function (RBF) kernel for 
+multiclass classification of electrical disturbances. The training pipeline includes:
+- Compressive sensing transformation (optional)
+- XPQRS feature extraction
+- Hyperparameter tuning via GridSearchCV
+- Model evaluation and visualization
+- Result persistence
+
+The RBF kernel is particularly effective for non-linearly separable data like
+electrical signal disturbances.
+
+Author: Maxnasc7
+License: MIT
+"""
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import joblib
@@ -22,8 +42,51 @@ from sklearn.pipeline import Pipeline
 
 def svm_with_rbf_training(X_train, y_train, X_test, y_test, X, technique, label_encoder):
     """
-    Treina e avalia um classificador SVM com Kernel RBF (SVC) 
-    usando Grid Search para um problema de classificação multiclasse.
+    Train and evaluate an SVM classifier with RBF kernel for multiclass disturbance classification.
+    
+    This function builds a complete ML pipeline that optionally includes compressive sensing
+    transformation and XPQRS feature extraction, then performs hyperparameter tuning
+    using GridSearchCV with 10-fold cross-validation on an SVM with RBF kernel.
+    
+    Parameters
+    ----------
+    X_train : pd.DataFrame or np.ndarray
+        Training features
+    y_train : np.ndarray
+        Encoded training labels
+    X_test : pd.DataFrame or np.ndarray
+        Testing features
+    y_test : np.ndarray
+        Encoded testing labels
+    X : pd.DataFrame or np.ndarray
+        Complete feature matrix (for reference)
+    technique : str
+        Compressive sensing technique to apply:
+        - 'original_data': No compression
+        - 'random_mesurements': Random CS measurements
+        - 'reconstructed_2_dot_5': Reconstructed from 2.5 kHz sampling
+        - others: Apply CS transformer
+    label_encoder : LabelEncoder
+        Fitted label encoder for inverse transforming predictions
+    
+    Returns
+    -------
+    dict
+        Dictionary containing:
+        - 'melhores_parametros': Best hyperparameters found
+        - 'acuracia': Test set accuracy
+        - 'roc_auc_score': ROC-AUC score
+        - 'mse': Mean squared error
+        - 'relatorio_classificacao': Classification report
+        - 'best_mean_score': Best CV score
+        - 'std_best_score_k_fold': Standard deviation of CV scores
+    
+    Notes
+    -----
+    - SVM kernel: RBF (Radial Basis Function)
+    - Saves trained model to: compressed_data_classification/src/models/best_models_result/svc_rbf/model_{technique}.pkl
+    - Saves results to: compressed_data_classification/src/models/best_models_result/svc_rbf/results_{technique}.json
+    - Saves confusion matrix plot to: compressed_data_classification/src/models/best_models_result/svc_rbf/plots/confusion_matrix_{technique}.png
     """
 
     # --- Configurações de Paths ---

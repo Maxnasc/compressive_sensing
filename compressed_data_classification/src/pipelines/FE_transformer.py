@@ -1,3 +1,25 @@
+"""
+Module: pipelines/FE_transformer.py
+
+XPQRS Feature Extractor for electrical signal classification.
+
+This module implements the XPQRS feature extraction method that extracts 15 features
+from electrical signals by computing features from the signal and its first four derivatives.
+The features extracted are:
+- Log Energy (LE)
+- Shannon Energy (SE)
+- Mobility (Mob) 
+
+These features are extracted for each of the 5 signal representations (original + 4 derivatives),
+yielding a total of 15 features per signal.
+
+This transformer is compatible with scikit-learn pipelines and can be used with any classifier.
+
+Author: Maxnasc7
+License: MIT
+Reference: XPQRS feature extraction from signal processing literature
+"""
+
 import numpy as np
 import pandas as pd
 import time
@@ -12,13 +34,56 @@ if 'profile' not in builtins.__dict__:
     builtins.__dict__['profile'] = profile
 
 class XPQRSFeatureExtractor(BaseEstimator, TransformerMixin):
+    """
+    Scikit-learn compatible transformer that extracts XPQRS features from signals.
+    
+    This transformer extracts 15 features (Log Energy, Shannon Energy, Mobility) from
+    a signal and its first four derivatives. The extracted features are useful for
+    electrical disturbance classification.
+    
+    Attributes
+    ----------
+    None (no state is maintained)
+    
+    Examples
+    --------
+    >>> from sklearn.pipeline import Pipeline
+    >>> from sklearn.svm import SVC
+    >>> pipe = Pipeline([
+    ...     ('features', XPQRSFeatureExtractor()),
+    ...     ('classifier', SVC())
+    ... ])
+    >>> pipe.fit(X_train, y_train)
+    """
+    
     def __init__(self):
         pass
 
     def _get_approximated_derivatives(self, x):
         """
-        Calcula as 4 primeiras derivadas aproximadas conforme Eq. 10-18[cite: 145, 147, 149].
-        O cálculo é feito pela diferença entre elementos sucessivos.
+        Compute the first four derivatives of a signal.
+        
+        Calculates the first four derivatives using finite differences (np.diff).
+        This is used to obtain different representations of the signal for feature extraction.
+        
+        Parameters
+        ----------
+        x : np.ndarray
+            1D signal array
+        
+        Returns
+        -------
+        list of np.ndarray
+            [x, d1, d2, d3, d4] where:
+            - x: Original signal
+            - d1: First derivative (signal velocity)
+            - d2: Second derivative (signal acceleration)
+            - d3: Third derivative
+            - d4: Fourth derivative
+        
+        Notes
+        -----
+        Each derivative reduces signal length by 1, so final arrays have different lengths.
         """
         d1 = np.diff(x)  # Primeira derivada
         d2 = np.diff(d1) # Segunda derivada
@@ -28,7 +93,29 @@ class XPQRSFeatureExtractor(BaseEstimator, TransformerMixin):
 
     def _extract_features(self, u):
         """
-        Extrai Log Energy, Shannon Energy e Mobility de um vetor u.
+        Extract three features from a signal representation.
+        
+        Extracts the following features from a signal vector:
+        1. Log Energy (LE): Sum of log of squared signal values
+        2. Shannon Energy (SE): Negative sum of squared signal times log of squared signal
+        3. Mobility (Mob): Square root of ratio of velocity variance to signal variance
+        
+        These features characterize the energy distribution and dynamics of the signal.
+        
+        Parameters
+        ----------
+        u : np.ndarray
+            1D signal vector
+        
+        Returns
+        -------
+        list of float
+            [log_energy, shannon_energy, mobility]
+        
+        Notes
+        -----
+        - A small epsilon is added to avoid log(0) errors
+        - Mobility is useful for distinguishing different electrical disturbance types
         """
         # Evita log(0) adicionando uma constante pequena (epsilon)
         epsilon = 1e-10
@@ -54,7 +141,28 @@ class XPQRSFeatureExtractor(BaseEstimator, TransformerMixin):
     @profile
     def transform(self, X):
         """
-        Processa cada sinal para gerar o vetor de 15 características[cite: 160, 161].
+        Extract XPQRS features from multiple signals.
+        
+        Processes each signal in the input data to extract 15 XPQRS features:
+        - 3 features (LE, SE, Mob) × 5 signal representations (original + 4 derivatives)
+        
+        Parameters
+        ----------
+        X : np.ndarray or pd.DataFrame
+            Input signals with shape (n_samples, n_features)
+            Each row represents one signal
+        
+        Returns
+        -------
+        np.ndarray
+            Extracted features with shape (n_samples, 15)
+            Contains 15 features per signal
+        
+        Notes
+        -----
+        - If X is a numpy array, it's converted to DataFrame
+        - Each signal is processed independently
+        - Processing time is printed for monitoring
         """
         t0 = time.perf_counter()
         # Verificando se X é um dicionário ou um array numpy
@@ -79,6 +187,24 @@ class XPQRSFeatureExtractor(BaseEstimator, TransformerMixin):
         return np.array(features_list)
 
     def fit(self, X, y=None):
+        """
+        Fit the transformer (no-op as this transformer is stateless).
+        
+        This method is required by scikit-learn but does not learn any parameters
+        as feature extraction is deterministic.
+        
+        Parameters
+        ----------
+        X : array-like
+            Input data (unused)
+        y : array-like, optional
+            Target values (unused)
+        
+        Returns
+        -------
+        self
+            Returns self for method chaining
+        """
         return self
 
 # --- Exemplo de Integração no Pipeline ---

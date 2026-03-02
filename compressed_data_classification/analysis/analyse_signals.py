@@ -1,3 +1,22 @@
+"""
+Module: analysis/analyse_signals.py
+
+Signal visualization and analysis for electrical disturbances.
+
+This script loads electrical disturbance data and creates visualizations showing
+representative signals from each disturbance class. It helps understand the
+characteristics of different electrical disturbances.
+
+The module:
+- Loads signal data from CSV
+- Groups signals by disturbance class
+- Plots one representative signal per class
+- Saves visualization to file
+
+Author: Maxnasc7
+License: MIT
+"""
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np # Importado para cálculos de layout

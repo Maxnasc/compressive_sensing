@@ -1,3 +1,25 @@
+"""
+Module: training/main.py
+
+Main entry point for training electrical disturbance classification models using compressive sensing.
+
+This module orchestrates the complete training pipeline:
+1. Loads and preprocesses data from CSV files
+2. Splits data into train/test sets
+3. Applies various compressive sensing techniques
+4. Trains multiple classification models (MLP, SVM RBF, Quadratic SVC)
+5. Evaluates and saves models with comprehensive metrics
+
+The training process supports different data compression techniques:
+- original_data: Raw signal data without compression
+- reconstructed_2_dot_5: Data reconstructed from 2.5 kHz sampling
+- reconstructed_random: Data reconstructed from random measurements
+- random_mesurements: Direct compressive measurements
+
+Author: Maxnasc7
+License: MIT
+"""
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import joblib
@@ -25,6 +47,35 @@ import time
 from compressed_data_classification.utils.utils import send_telegram_msg
 
 def import_and_split_dataset(data_path):
+    """
+    Load dataset from CSV and split into train/test sets.
+    
+    This function loads electrical disturbance data from a CSV file, encodes the target
+    variable (class labels), and performs a stratified split for training and testing.
+    
+    Parameters
+    ----------
+    data_path : str
+        Path to the CSV file containing the dataset.
+        Expected to have a 'target' column with class labels.
+    
+    Returns
+    -------
+    tuple
+        (X_train, X_test, y_train, y_test, label_encoder, X)
+        - X_train : pd.DataFrame
+            Training features (90% of data)
+        - X_test : pd.DataFrame
+            Testing features (10% of data)
+        - y_train : np.ndarray
+            Encoded training labels
+        - y_test : np.ndarray
+            Encoded testing labels
+        - label_encoder : LabelEncoder
+            Fitted encoder for class labels
+        - X : pd.DataFrame
+            Complete feature matrix
+    """
     # Carregue os dados
     df = pd.read_csv(data_path)
 

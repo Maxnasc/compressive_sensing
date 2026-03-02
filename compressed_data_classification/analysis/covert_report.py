@@ -1,3 +1,20 @@
+"""
+Module: analysis/covert_report.py
+
+Tools for parsing and consolidating classification reports.
+
+This module provides utilities to parse scikit-learn's classification report output
+and consolidate results from multiple JSON files into a single CSV file for
+easy comparison and analysis across different models and techniques.
+
+Functions:
+- parse_classification_report: Convert sklearn report text to DataFrame
+- process_reports: Extract reports from JSON files and combine into CSV
+
+Author: Maxnasc7
+License: MIT
+"""
+
 import os
 import json
 import pandas as pd
@@ -6,7 +23,21 @@ from io import StringIO
 
 def parse_classification_report(report_text):
     """
-    Converte texto bruto de classification_report em DataFrame
+    Convert raw classification_report text output to DataFrame.
+    
+    Parses the text output from sklearn's classification_report function
+    and converts it into a structured DataFrame with precision, recall, F1-score,
+    and support metrics for each class.
+    
+    Parameters
+    ----------
+    report_text : str
+        Raw text output from sklearn.metrics.classification_report
+    
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with columns: Class, Precision, Recall, F1-score, Support
     """
     lines = report_text.strip().split("\n")
     lines = [l for l in lines if l.strip() != ""]  # remove linhas vazias
@@ -34,7 +65,28 @@ def parse_classification_report(report_text):
 
 def process_reports(directory, output_csv="combined_reports.csv"):
     """
-    Lê todos os JSONs do diretório, extrai os relatórios e salva em um CSV único.
+    Extract classification reports from JSON files and combine into CSV.
+    
+    Scans a directory for JSON files containing classification reports,
+    parses them using parse_classification_report, and consolidates all
+    results into a single CSV file for analysis.
+    
+    Parameters
+    ----------
+    directory : str
+        Path to directory containing JSON files with classification reports
+    output_csv : str, default='combined_reports.csv'
+        Output CSV filename where consolidated reports will be saved
+    
+    Returns
+    -------
+    None
+        Writes consolidated reports to output_csv file
+    
+    Notes
+    -----
+    - Only processes files ending with '.json' that contain 'report' in filename
+    - Each JSON should contain a classification report as a string
     """
     all_rows = []
 

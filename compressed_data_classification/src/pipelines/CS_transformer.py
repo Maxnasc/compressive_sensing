@@ -1,3 +1,22 @@
+"""
+Module: pipelines/CS_transformer.py
+
+Compressive Sensing (CS) Transformer for signal reconstruction and feature extraction.
+
+This module implements a scikit-learn compatible transformer that applies compressive sensing
+techniques to electrical signals. It supports:
+- Multiple feature extraction techniques (energy, topk, pca, direct coefficients)
+- CPU-based processing with Joblib parallelization
+- GPU acceleration with CuPy (optional)
+- Sparse signal recovery using Lasso and Orthogonal Matching Pursuit (OMP)
+
+The transformer loads pre-computed CS structures (measurement matrix Phi, wavelet basis Psi)
+and uses them to reconstruct sparse representations of signals.
+
+Author: Maxnasc7
+License: MIT
+"""
+
 # CS_transformer_fixed.py
 import os
 import pickle
@@ -40,8 +59,60 @@ if 'profile' not in builtins.__dict__:
 
 class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
     """
-    Transformer sklearn para extrair features a partir de compressed sensing.
-    Suporta CPU (Joblib) e GPU (CuPy + CuML) para aceleração.
+    Scikit-learn compatible transformer for compressive sensing signal processing.
+    
+    This transformer applies compressive sensing to electrical signals to extract features.
+    It supports multiple feature extraction techniques and can accelerate processing 
+    using GPU when available.
+    
+    Parameters
+    ----------
+    technique : str, default='energy'
+        Feature extraction technique to apply:
+        - 'energy': Energy per frequency band
+        - 'topk': Top-K sparse coefficients
+        - 'pca': PCA-reduced sparse coefficients
+        - 'pure_alpha': All sparse coefficients
+    cs_structures_path : str, default='compressed_data_classification/src/cs_omp/cs_constants'
+        Path to directory containing pre-computed CS matrices (Phi, Psi_wave, A_norm, col_norms)
+    cs_metrics_path : str, default='compressed_data_classification/src/cs_omp/results/metrics/best_cs_tune_metrics.json'
+        Path to JSON file with CS configuration parameters
+    lasso_alpha : float, default=1e-4
+        Regularization parameter for Lasso or sparsity parameter for OMP
+    K_topk : int, default=40
+        Number of top coefficients to keep when using 'topk' technique
+    pca_components : int, default=40
+        Number of PCA components when using 'pca' technique
+    n_jobs : int, default=-1
+        Number of parallel jobs for processing. -1 means using all processors
+    verbose : bool, default=False
+        Whether to print progress messages
+    
+    Attributes
+    ----------
+    Phi : np.ndarray or array-like
+        Measurement/sensing matrix (M x N) or mask (N,) or indices (M,)
+    Psi_wave : np.ndarray
+        Wavelet basis matrix for sparse representation
+    A_norm : np.ndarray
+        Normalized combined dictionary (Phi * Psi_wave)
+    col_norms : np.ndarray
+        Column norms used for denormalization
+    N : int
+        Signal length
+    shapes : list
+        Shape information for wavelet decomposition
+    
+    Examples
+    --------
+    >>> from sklearn.pipeline import Pipeline
+    >>> from sklearn.svm import SVC
+    >>> cs_transformer = CompressiveSensingTransformer(technique='energy')
+    >>> pipeline = Pipeline([
+    ...     ('cs', cs_transformer),
+    ...     ('classifier', SVC())
+    ... ])
+    >>> pipeline.fit(X_train, y_train)
     """
 
     def __init__(
@@ -95,7 +166,28 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
         shapes: Optional[List[int]] = None,
         Psi_concat: Optional[np.ndarray] = None,
     ):
-        """Salva as estruturas num único .pkl."""
+        """
+        Save compressive sensing structures to file.
+        
+        Saves all CS-related matrices and parameters as a pickled dictionary.
+        
+        Parameters
+        ----------
+        path : str, optional
+            Output file path. If None, uses self.cs_structures_path
+        Phi : np.ndarray, optional
+            Measurement matrix. If None, uses self.Phi
+        A_norm : np.ndarray, optional
+            Normalized dictionary. If None, uses self.A_norm
+        col_norms : np.ndarray, optional
+            Column norms. If None, uses self.col_norms
+        N : int, optional
+            Signal length. If None, uses self.N
+        shapes : list, optional
+            Wavelet shapes. If None, uses self.shapes
+        Psi_concat : np.ndarray, optional
+            Concatenated dictionary. If None, uses self.Psi_concat
+        """
         if path is None:
             path = self.cs_structures_path
         data = {
@@ -113,7 +205,34 @@ class CompressiveSensingTransformer(BaseEstimator, TransformerMixin):
             print(f"[SAVE] Estruturas CS salvas em: {path}")
 
     def load_cs_structures(self, path: Optional[str] = None) -> None:
-        """Carrega estruturas salvas anteriormente."""
+        """
+        Load pre-computed compressive sensing structures from files.
+        
+        Loads measurement matrix (Phi), wavelet basis (Psi_wave), normalized dictionary (A_norm),
+        column norms, and configuration parameters from saved files.
+        
+        Parameters
+        ----------
+        path : str, optional
+            Path to directory containing CS structure files. If None, uses self.cs_structures_path
+            Expected files:
+            - cs_best_result_Phi.npy: Measurement matrix
+            - cs_best_result_Psi_w.npy: Wavelet basis
+            - cs_best_result_A_norm.npy: Normalized dictionary
+            - cs_best_result_col_norms.npy: Column norms
+        
+        Returns
+        -------
+        None
+            Updates self attributes: Phi, Psi_wave, A_norm, col_norms, N, lasso_alpha,
+                                     window_size, window_step, base_model
+        
+        Notes
+        -----
+        - Loads configuration from self.cs_metrics_path JSON file
+        - Initializes base_model as OrthogonalMatchingPursuit with lasso_alpha as sparsity
+        - If GPU is available, transfers matrices to GPU
+        """
         if path is None:
             path = self.cs_structures_path
         with open(self.cs_metrics_path, "r") as f:
